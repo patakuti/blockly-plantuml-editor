@@ -147,4 +147,34 @@ describe("activityWorkspaceToCode", () => {
     ifBlock.loadExtraState!({ elseCount: 0 });
     expect(ifBlock.getInput("ELSE")).toBeNull();
   });
+
+  it("generates a while loop", () => {
+    const start = workspace.newBlock("activity_start");
+    const whileBlock = workspace.newBlock("activity_while");
+    whileBlock.setFieldValue("x < 10", "COND");
+    const body = workspace.newBlock("activity_action");
+    body.setFieldValue("increment x", "TEXT");
+    whileBlock.getInput("DO")!.connection!.connect(body.previousConnection!);
+    const stop = workspace.newBlock("activity_stop");
+    connectChain(start, whileBlock, stop);
+
+    expect(activityWorkspaceToCode(workspace)).toBe(
+      "@startuml\nstart\nwhile (x < 10)\n:increment x;\nendwhile\nstop\n@enduml\n",
+    );
+  });
+
+  it("generates a repeat loop", () => {
+    const start = workspace.newBlock("activity_start");
+    const repeatBlock = workspace.newBlock("activity_repeat");
+    repeatBlock.setFieldValue("x < 10", "COND");
+    const body = workspace.newBlock("activity_action");
+    body.setFieldValue("increment x", "TEXT");
+    repeatBlock.getInput("DO")!.connection!.connect(body.previousConnection!);
+    const stop = workspace.newBlock("activity_stop");
+    connectChain(start, repeatBlock, stop);
+
+    expect(activityWorkspaceToCode(workspace)).toBe(
+      "@startuml\nstart\nrepeat\n:increment x;\nrepeat while (x < 10)\nstop\n@enduml\n",
+    );
+  });
 });

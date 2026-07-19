@@ -57,6 +57,53 @@ export function defineActivityBlocks(): void {
       tooltip: "Branch based on a condition. Use the gear icon to add/remove an else branch.",
       mutator: "activity_if_mutator",
     },
+    {
+      type: "activity_while",
+      message0: "while ( %1 )",
+      args0: [
+        {
+          type: "field_input",
+          name: "COND",
+          text: "condition",
+        },
+      ],
+      message1: "%1",
+      args1: [
+        {
+          type: "input_statement",
+          name: "DO",
+          check: ACTIVITY_STATEMENT,
+        },
+      ],
+      previousStatement: ACTIVITY_STATEMENT,
+      nextStatement: ACTIVITY_STATEMENT,
+      colour: 210,
+      tooltip: "Repeat while a condition holds, checked before each iteration.",
+    },
+    {
+      type: "activity_repeat",
+      message0: "repeat",
+      message1: "%1",
+      args1: [
+        {
+          type: "input_statement",
+          name: "DO",
+          check: ACTIVITY_STATEMENT,
+        },
+      ],
+      message2: "repeat while ( %1 )",
+      args2: [
+        {
+          type: "field_input",
+          name: "COND",
+          text: "condition",
+        },
+      ],
+      previousStatement: ACTIVITY_STATEMENT,
+      nextStatement: ACTIVITY_STATEMENT,
+      colour: 210,
+      tooltip: "Repeat until a condition holds, checked after each iteration.",
+    },
   ]);
 
   defineActivityIfMutator();

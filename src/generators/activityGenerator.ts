@@ -21,6 +21,16 @@ activityGenerator.forBlock["activity_if"] = (block, generator) => {
   code += "endif\n";
   return code;
 };
+activityGenerator.forBlock["activity_while"] = (block, generator) => {
+  const cond = escapeText(block.getFieldValue("COND"));
+  const body = generateStatements(generator, block.getInputTargetBlock("DO"));
+  return `while (${cond})\n${body}endwhile\n`;
+};
+activityGenerator.forBlock["activity_repeat"] = (block, generator) => {
+  const cond = escapeText(block.getFieldValue("COND"));
+  const body = generateStatements(generator, block.getInputTargetBlock("DO"));
+  return `repeat\n${body}repeat while (${cond})\n`;
+};
 
 /**
  * Generates full PlantUML source for the activity-diagram workspace.

@@ -16,5 +16,13 @@ export const activityToolbox: Blockly.utils.toolbox.ToolboxInfo = {
       kind: "block",
       type: "activity_if",
     },
+    {
+      kind: "block",
+      type: "activity_while",
+    },
+    {
+      kind: "block",
+      type: "activity_repeat",
+    },
   ],
 };
