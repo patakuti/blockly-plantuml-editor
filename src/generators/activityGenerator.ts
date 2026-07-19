@@ -31,6 +31,13 @@ activityGenerator.forBlock["activity_repeat"] = (block, generator) => {
   const body = generateStatements(generator, block.getInputTargetBlock("DO"));
   return `repeat\n${body}repeat while (${cond})\n`;
 };
+activityGenerator.forBlock["activity_fork"] = (block, generator) => {
+  const branches: string[] = [];
+  for (let i = 0; block.getInput(`BRANCH${i}`); i++) {
+    branches.push(generateStatements(generator, block.getInputTargetBlock(`BRANCH${i}`)));
+  }
+  return `fork\n${branches.join("fork again\n")}end fork\n`;
+};
 
 /**
  * Generates full PlantUML source for the activity-diagram workspace.

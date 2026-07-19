@@ -1,5 +1,6 @@
 import * as Blockly from "blockly/core";
 import { defineActivityIfMutator } from "./ifMutator";
+import { defineActivityForkMutator } from "./forkMutator";
 import { ACTIVITY_STATEMENT } from "./constants";
 
 export function defineActivityBlocks(): void {
@@ -104,7 +105,34 @@ export function defineActivityBlocks(): void {
       colour: 210,
       tooltip: "Repeat until a condition holds, checked after each iteration.",
     },
+    {
+      type: "activity_fork",
+      message0: "fork",
+      message1: "%1",
+      args1: [
+        {
+          type: "input_statement",
+          name: "BRANCH0",
+          check: ACTIVITY_STATEMENT,
+        },
+      ],
+      message2: "fork again",
+      message3: "%1",
+      args3: [
+        {
+          type: "input_statement",
+          name: "BRANCH1",
+          check: ACTIVITY_STATEMENT,
+        },
+      ],
+      previousStatement: ACTIVITY_STATEMENT,
+      nextStatement: ACTIVITY_STATEMENT,
+      colour: 210,
+      tooltip: "Split into parallel branches. Use the gear icon to add/remove branches.",
+      mutator: "activity_fork_mutator",
+    },
   ]);
 
   defineActivityIfMutator();
+  defineActivityForkMutator();
 }

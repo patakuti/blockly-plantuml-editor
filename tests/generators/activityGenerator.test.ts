@@ -177,4 +177,54 @@ describe("activityWorkspaceToCode", () => {
       "@startuml\nstart\nrepeat\n:increment x;\nrepeat while (x < 10)\nstop\n@enduml\n",
     );
   });
+
+  it("generates a fork with its two default branches", () => {
+    const start = workspace.newBlock("activity_start");
+    const forkBlock = workspace.newBlock("activity_fork");
+    const branchA = workspace.newBlock("activity_action");
+    branchA.setFieldValue("branch A", "TEXT");
+    forkBlock.getInput("BRANCH0")!.connection!.connect(branchA.previousConnection!);
+    const branchB = workspace.newBlock("activity_action");
+    branchB.setFieldValue("branch B", "TEXT");
+    forkBlock.getInput("BRANCH1")!.connection!.connect(branchB.previousConnection!);
+    const stop = workspace.newBlock("activity_stop");
+    connectChain(start, forkBlock, stop);
+
+    expect(activityWorkspaceToCode(workspace)).toBe(
+      "@startuml\nstart\nfork\n:branch A;\nfork again\n:branch B;\nend fork\nstop\n@enduml\n",
+    );
+  });
+
+  it("round-trips the branch-count mutator state and generates extra branches", () => {
+    const start = workspace.newBlock("activity_start");
+    const forkBlock = workspace.newBlock("activity_fork");
+    expect(forkBlock.saveExtraState!()).toEqual({ extraBranchCount: 0 });
+    expect(forkBlock.getInput("BRANCH2")).toBeNull();
+
+    forkBlock.loadExtraState!({ extraBranchCount: 1 });
+    expect(forkBlock.saveExtraState!()).toEqual({ extraBranchCount: 1 });
+    expect(forkBlock.getInput("BRANCH2")).not.toBeNull();
+
+    const branchA = workspace.newBlock("activity_action");
+    branchA.setFieldValue("branch A", "TEXT");
+    forkBlock.getInput("BRANCH0")!.connection!.connect(branchA.previousConnection!);
+    const branchB = workspace.newBlock("activity_action");
+    branchB.setFieldValue("branch B", "TEXT");
+    forkBlock.getInput("BRANCH1")!.connection!.connect(branchB.previousConnection!);
+    const branchC = workspace.newBlock("activity_action");
+    branchC.setFieldValue("branch C", "TEXT");
+    forkBlock.getInput("BRANCH2")!.connection!.connect(branchC.previousConnection!);
+
+    const stop = workspace.newBlock("activity_stop");
+    connectChain(start, forkBlock, stop);
+
+    expect(activityWorkspaceToCode(workspace)).toBe(
+      "@startuml\nstart\n" +
+        "fork\n:branch A;\nfork again\n:branch B;\nfork again\n:branch C;\n" +
+        "end fork\nstop\n@enduml\n",
+    );
+
+    forkBlock.loadExtraState!({ extraBranchCount: 0 });
+    expect(forkBlock.getInput("BRANCH2")).toBeNull();
+  });
 });
