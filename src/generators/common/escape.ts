@@ -11,3 +11,16 @@
 export function escapeText(text: string): string {
   return text.replace(/@/g, "&#64;");
 }
+
+/**
+ * Escapes a name for embedding inside a double-quoted PlantUML identifier
+ * (e.g. `participant "..."`, `"..." -> "...": ...`). Verified against the
+ * public PlantUML server (2026-07-19): a backslash-escaped `"` inside a
+ * quoted identifier is NOT supported and breaks parsing (HTTP 400), so
+ * quotes are replaced with `'` instead of escaped. `@enduml` still breaks
+ * the diagram even inside quotes, so the same `@` handling as escapeText
+ * applies here too.
+ */
+export function escapeQuotedName(text: string): string {
+  return escapeText(text).replace(/"/g, "'");
+}

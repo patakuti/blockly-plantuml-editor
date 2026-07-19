@@ -10,6 +10,26 @@ body,
   flex-direction: column;
 }
 
+.tab-bar {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 4px;
+  padding: 8px 8px 0;
+}
+
+.tab-button {
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  border-bottom: none;
+  background: #eee;
+  cursor: pointer;
+}
+
+.tab-button.active {
+  background: #fff;
+  font-weight: bold;
+}
+
 .toolbar {
   flex: 0 0 auto;
   padding: 8px;
@@ -28,6 +48,12 @@ body,
 #blocklyDiv {
   flex: 1 1 50%;
   height: 100%;
+  position: relative;
+}
+
+.workspace-instance {
+  height: 100%;
+  width: 100%;
 }
 
 #previewDiv {

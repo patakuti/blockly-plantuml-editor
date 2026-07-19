@@ -1,15 +1,13 @@
-import type * as Blockly from "blockly/core";
 import {
   exportPlantUmlText,
   exportWorkspaceJson,
   importWorkspaceJson,
 } from "../workspace/persistence";
+import type { DiagramInstance } from "../workspace/workspaceManager";
 
 interface ToolbarOptions {
-  workspace: Blockly.Workspace;
-  jsonFilename: string;
-  plantUmlFilename: string;
-  getPlantUmlText: () => string;
+  /** Resolved on every click so the toolbar always targets the active tab. */
+  getActive: () => DiagramInstance;
 }
 
 export function createToolbar(container: HTMLElement, options: ToolbarOptions): void {
@@ -19,7 +17,8 @@ export function createToolbar(container: HTMLElement, options: ToolbarOptions): 
   const saveButton = document.createElement("button");
   saveButton.textContent = "Save JSON";
   saveButton.addEventListener("click", () => {
-    exportWorkspaceJson(options.jsonFilename, options.workspace);
+    const active = options.getActive();
+    exportWorkspaceJson(active.jsonFilename, active.workspace);
   });
 
   const loadButton = document.createElement("button");
@@ -31,7 +30,7 @@ export function createToolbar(container: HTMLElement, options: ToolbarOptions): 
   fileInput.addEventListener("change", () => {
     const file = fileInput.files?.[0];
     if (!file) return;
-    importWorkspaceJson(file, options.workspace).finally(() => {
+    importWorkspaceJson(file, options.getActive().workspace).finally(() => {
       fileInput.value = "";
     });
   });
@@ -40,7 +39,8 @@ export function createToolbar(container: HTMLElement, options: ToolbarOptions): 
   const exportButton = document.createElement("button");
   exportButton.textContent = "Export PlantUML";
   exportButton.addEventListener("click", () => {
-    exportPlantUmlText(options.plantUmlFilename, options.getPlantUmlText());
+    const active = options.getActive();
+    exportPlantUmlText(active.plantUmlFilename, active.toCode(active.workspace));
   });
 
   toolbar.append(saveButton, loadButton, fileInput, exportButton);
