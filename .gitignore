@@ -1,0 +1,11 @@
+node_modules
+dist
+*.local
+*.tsbuildinfo
+
+# Project planning docs are intentionally not version-controlled (see CLAUDE.md)
+/00_concept-design.md
+/01_requirements.md
+/02_design.md
+/03_plan.md
+/CLAUDE.md
