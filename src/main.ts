@@ -3,6 +3,7 @@ import * as En from "blockly/msg/en";
 import "./style.css";
 import { defineActivityBlocks } from "./blocks/activity/blocks";
 import { activityToolbox } from "./blocks/activity/toolbox";
+import { setUpFixedStartStop } from "./blocks/activity/fixedStartStop";
 import { activityGenerator, activityWorkspaceToCode } from "./generators/activityGenerator";
 import { defineSequenceBlocks } from "./blocks/sequence/blocks";
 import { sequenceToolbox } from "./blocks/sequence/toolbox";
@@ -19,28 +20,6 @@ import {
 } from "./workspace/workspaceManager";
 import { createToolbar } from "./ui/toolbar";
 import { createTabs } from "./ui/tabs";
-
-/** Places the single, fixed start/stop pair that every activity diagram starts with. */
-function setUpFixedStartStop(ws: Blockly.WorkspaceSvg): void {
-  const startBlock = ws.newBlock("activity_start") as Blockly.BlockSvg;
-  startBlock.initSvg();
-  startBlock.render();
-  startBlock.moveBy(40, 40);
-  startBlock.setDeletable(false);
-  startBlock.setMovable(false);
-
-  const stopBlock = ws.newBlock("activity_stop") as Blockly.BlockSvg;
-  stopBlock.initSvg();
-  stopBlock.render();
-  stopBlock.setDeletable(false);
-  stopBlock.setMovable(false);
-
-  const startConnection = startBlock.nextConnection;
-  const stopConnection = stopBlock.previousConnection;
-  if (startConnection && stopConnection) {
-    startConnection.connect(stopConnection);
-  }
-}
 
 const app = document.getElementById("app")!;
 

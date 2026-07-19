@@ -68,6 +68,6 @@ Free-form text (Action/Message/Note bodies, participant names) is escaped only w
 
 ## Known limitations
 
-- The activity diagram's Start/Stop blocks are fixed (non-deletable, non-movable), which prevents the usual ways of ending up without a Stop or with multiple Starts. Dragging a block out from the middle of the chain in a way that detaches Stop from Start is still structurally possible; this is accepted as a known edge case rather than solved with custom drag-handling.
+- The activity diagram's Start/Stop blocks are non-deletable and never offered in the toolbox, which prevents the usual ways of ending up without a Stop or with multiple Starts. Start is also non-movable; Stop deliberately is **not** (Blockly refuses to let you drag a block into a stack position immediately before an immovable, non-shadow block, which made it impossible to insert anything right before an immovable Stop). Dragging Stop itself away from the chain is still structurally possible; this is accepted as a known edge case rather than solved with custom drag-handling.
 - Sequence diagram participant declaration order is inferred from block Y-position in the workspace, not from an explicit ordering mechanism.
 - The message/statement chain generator only follows a single chain from its anchor block; additional disconnected chains elsewhere in the workspace are not included in the generated output.
