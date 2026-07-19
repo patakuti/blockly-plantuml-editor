@@ -51,6 +51,20 @@ body,
   position: relative;
 }
 
+.splitter {
+  flex: 0 0 8px;
+  height: 100%;
+  cursor: col-resize;
+  background: #eee;
+  border-left: 1px solid #ccc;
+  border-right: 1px solid #ccc;
+  touch-action: none;
+}
+
+.splitter:hover {
+  background: #ddd;
+}
+
 .workspace-instance {
   height: 100%;
   width: 100%;
@@ -60,7 +74,6 @@ body,
   flex: 1 1 50%;
   height: 100%;
   overflow: auto;
-  border-left: 1px solid #ccc;
 }
 
 #previewDiv img {

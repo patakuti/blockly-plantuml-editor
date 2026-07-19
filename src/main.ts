@@ -21,6 +21,7 @@ import {
 } from "./workspace/workspaceManager";
 import { createToolbar } from "./ui/toolbar";
 import { createTabs } from "./ui/tabs";
+import { installSplitter } from "./ui/splitter";
 
 const app = document.getElementById("app")!;
 
@@ -109,6 +110,10 @@ createTabs(
     updatePreview();
   },
 );
+
+installSplitter(layout, workspaceHost, previewDiv, () => {
+  Blockly.svgResize(instanceByKey.get(activeKey)!.workspace);
+});
 
 createToolbar(toolbarDiv, {
   getActive: (): DiagramInstance => instanceByKey.get(activeKey)!,
