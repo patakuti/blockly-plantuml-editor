@@ -162,6 +162,17 @@ export function defineSequenceBlocks(): void {
       this.setNextStatement(true, SEQUENCE_STATEMENT);
       this.setColour(160);
       this.setTooltip("Attaches a note to a participant's lifeline.");
+
+      // Default TARGET to the first declared participant so a freshly dropped
+      // note renders immediately instead of sitting on an empty selection
+      // (FR-SEQ-10). A saved workspace's actual TARGET value, if any, is
+      // applied by the deserializer right after this and overrides it; a
+      // flyout preview instance sees no participants in its own workspace and
+      // is left untouched.
+      const names = this.workspace
+        .getBlocksByType("sequence_participant", true)
+        .map((b) => b.getFieldValue("NAME") as string);
+      if (names.length > 0) this.setFieldValue(names[0], "TARGET");
     },
   };
 }
