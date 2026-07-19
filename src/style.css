@@ -80,6 +80,12 @@ body,
   max-width: 100%;
 }
 
+.preview-actions {
+  display: flex;
+  gap: 8px;
+  margin: 8px 8px 0;
+}
+
 .preview-source {
   margin: 8px;
   padding: 8px;

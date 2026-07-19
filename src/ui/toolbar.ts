@@ -1,8 +1,4 @@
-import {
-  exportPlantUmlText,
-  exportWorkspaceJson,
-  importWorkspaceJson,
-} from "../workspace/persistence";
+import { exportWorkspaceJson, importWorkspaceJson } from "../workspace/persistence";
 import { getPlantUmlServerBase, setPlantUmlServerBase } from "../preview/plantumlEncoder";
 import type { DiagramInstance } from "../workspace/workspaceManager";
 
@@ -39,13 +35,6 @@ export function createToolbar(container: HTMLElement, options: ToolbarOptions): 
   });
   loadButton.addEventListener("click", () => fileInput.click());
 
-  const exportButton = document.createElement("button");
-  exportButton.textContent = "Export PlantUML";
-  exportButton.addEventListener("click", () => {
-    const active = options.getActive();
-    void exportPlantUmlText(active.plantUmlFilename, active.toCode(active.workspace));
-  });
-
   const undoButton = document.createElement("button");
   undoButton.textContent = "Undo";
   undoButton.addEventListener("click", () => {
@@ -70,6 +59,6 @@ export function createToolbar(container: HTMLElement, options: ToolbarOptions): 
     options.onPlantUmlServerChanged();
   });
 
-  toolbar.append(saveButton, loadButton, fileInput, exportButton, undoButton, clearButton, serverButton);
+  toolbar.append(saveButton, loadButton, fileInput, undoButton, clearButton, serverButton);
   container.appendChild(toolbar);
 }

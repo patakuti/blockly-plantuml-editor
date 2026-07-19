@@ -82,6 +82,7 @@ let activeKey = instances[0].key;
 
 function updatePreview(): void {
   const active = instanceByKey.get(activeKey)!;
+  previewPanel.setActiveFilename(active.plantUmlFilename);
   previewPanel.scheduleUpdate(active.toCode(active.workspace));
 }
 
