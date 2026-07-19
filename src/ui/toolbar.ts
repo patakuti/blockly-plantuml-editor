@@ -3,11 +3,14 @@ import {
   exportWorkspaceJson,
   importWorkspaceJson,
 } from "../workspace/persistence";
+import { getPlantUmlServerBase, setPlantUmlServerBase } from "../preview/plantumlEncoder";
 import type { DiagramInstance } from "../workspace/workspaceManager";
 
 interface ToolbarOptions {
   /** Resolved on every click so the toolbar always targets the active tab. */
   getActive: () => DiagramInstance;
+  /** Called after the PlantUML server URL changes, so the preview can refresh immediately. */
+  onPlantUmlServerChanged: () => void;
 }
 
 export function createToolbar(container: HTMLElement, options: ToolbarOptions): void {
@@ -58,6 +61,15 @@ export function createToolbar(container: HTMLElement, options: ToolbarOptions): 
     active.setUpInitialState?.(active.workspace);
   });
 
-  toolbar.append(saveButton, loadButton, fileInput, exportButton, undoButton, clearButton);
+  const serverButton = document.createElement("button");
+  serverButton.textContent = "PlantUML Server";
+  serverButton.addEventListener("click", () => {
+    const input = window.prompt("PlantUML server URL:", getPlantUmlServerBase());
+    if (input === null) return;
+    setPlantUmlServerBase(input);
+    options.onPlantUmlServerChanged();
+  });
+
+  toolbar.append(saveButton, loadButton, fileInput, exportButton, undoButton, clearButton, serverButton);
   container.appendChild(toolbar);
 }

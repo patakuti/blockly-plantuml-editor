@@ -117,6 +117,7 @@ installSplitter(layout, workspaceHost, previewDiv, () => {
 
 createToolbar(toolbarDiv, {
   getActive: (): DiagramInstance => instanceByKey.get(activeKey)!,
+  onPlantUmlServerChanged: updatePreview,
 });
 
 if (import.meta.env.DEV) {
