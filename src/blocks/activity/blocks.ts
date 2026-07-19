@@ -1,7 +1,6 @@
 import * as Blockly from "blockly/core";
-
-/** Shared connection-check type: only activity statements may chain together. */
-const ACTIVITY_STATEMENT = "ActivityStatement";
+import { defineActivityIfMutator } from "./ifMutator";
+import { ACTIVITY_STATEMENT } from "./constants";
 
 export function defineActivityBlocks(): void {
   Blockly.defineBlocksWithJsonArray([
@@ -34,5 +33,31 @@ export function defineActivityBlocks(): void {
       colour: 210,
       tooltip: "A single activity step.",
     },
+    {
+      type: "activity_if",
+      message0: "if ( %1 ) then (yes)",
+      args0: [
+        {
+          type: "field_input",
+          name: "COND",
+          text: "condition",
+        },
+      ],
+      message1: "%1",
+      args1: [
+        {
+          type: "input_statement",
+          name: "DO0",
+          check: ACTIVITY_STATEMENT,
+        },
+      ],
+      previousStatement: ACTIVITY_STATEMENT,
+      nextStatement: ACTIVITY_STATEMENT,
+      colour: 210,
+      tooltip: "Branch based on a condition. Use the gear icon to add/remove an else branch.",
+      mutator: "activity_if_mutator",
+    },
   ]);
+
+  defineActivityIfMutator();
 }

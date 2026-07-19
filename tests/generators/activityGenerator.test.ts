@@ -94,4 +94,57 @@ describe("activityWorkspaceToCode", () => {
   it("returns an empty shell when there is no start block", () => {
     expect(activityWorkspaceToCode(workspace)).toBe("@startuml\n@enduml\n");
   });
+
+  it("generates an if without an else branch by default", () => {
+    const start = workspace.newBlock("activity_start");
+    const ifBlock = workspace.newBlock("activity_if");
+    ifBlock.setFieldValue("x > 0", "COND");
+    const thenAction = workspace.newBlock("activity_action");
+    thenAction.setFieldValue("Then branch", "TEXT");
+    ifBlock.getInput("DO0")!.connection!.connect(thenAction.previousConnection!);
+    const stop = workspace.newBlock("activity_stop");
+    connectChain(start, ifBlock, stop);
+
+    expect(activityWorkspaceToCode(workspace)).toBe(
+      "@startuml\nstart\nif (x > 0) then (yes)\n:Then branch;\nendif\nstop\n@enduml\n",
+    );
+  });
+
+  it("generates an if/else branch once the mutator adds an else", () => {
+    const start = workspace.newBlock("activity_start");
+    const ifBlock = workspace.newBlock("activity_if");
+    ifBlock.setFieldValue("x > 0", "COND");
+    ifBlock.loadExtraState!({ elseCount: 1 });
+
+    const thenAction = workspace.newBlock("activity_action");
+    thenAction.setFieldValue("Then branch", "TEXT");
+    ifBlock.getInput("DO0")!.connection!.connect(thenAction.previousConnection!);
+
+    const elseAction = workspace.newBlock("activity_action");
+    elseAction.setFieldValue("Else branch", "TEXT");
+    ifBlock.getInput("ELSE")!.connection!.connect(elseAction.previousConnection!);
+
+    const stop = workspace.newBlock("activity_stop");
+    connectChain(start, ifBlock, stop);
+
+    expect(activityWorkspaceToCode(workspace)).toBe(
+      "@startuml\nstart\n" +
+        "if (x > 0) then (yes)\n:Then branch;\n" +
+        "else (no)\n:Else branch;\n" +
+        "endif\nstop\n@enduml\n",
+    );
+  });
+
+  it("round-trips the else mutator state via save/loadExtraState", () => {
+    const ifBlock = workspace.newBlock("activity_if");
+    expect(ifBlock.saveExtraState!()).toEqual({ elseCount: 0 });
+    expect(ifBlock.getInput("ELSE")).toBeNull();
+
+    ifBlock.loadExtraState!({ elseCount: 1 });
+    expect(ifBlock.saveExtraState!()).toEqual({ elseCount: 1 });
+    expect(ifBlock.getInput("ELSE")).not.toBeNull();
+
+    ifBlock.loadExtraState!({ elseCount: 0 });
+    expect(ifBlock.getInput("ELSE")).toBeNull();
+  });
 });

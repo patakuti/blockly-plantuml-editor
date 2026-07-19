@@ -10,6 +10,17 @@ activityGenerator.forBlock["activity_action"] = (block) => {
   const text = escapeText(block.getFieldValue("TEXT"));
   return `:${text};\n`;
 };
+activityGenerator.forBlock["activity_if"] = (block, generator) => {
+  const cond = escapeText(block.getFieldValue("COND"));
+  const thenBody = generateStatements(generator, block.getInputTargetBlock("DO0"));
+  let code = `if (${cond}) then (yes)\n${thenBody}`;
+  if (block.getInput("ELSE")) {
+    const elseBody = generateStatements(generator, block.getInputTargetBlock("ELSE"));
+    code += `else (no)\n${elseBody}`;
+  }
+  code += "endif\n";
+  return code;
+};
 
 /**
  * Generates full PlantUML source for the activity-diagram workspace.

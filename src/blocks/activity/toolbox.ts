@@ -12,5 +12,9 @@ export const activityToolbox: Blockly.utils.toolbox.ToolboxInfo = {
       kind: "block",
       type: "activity_action",
     },
+    {
+      kind: "block",
+      type: "activity_if",
+    },
   ],
 };
