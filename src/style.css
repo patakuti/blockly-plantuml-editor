@@ -5,7 +5,24 @@ body,
   margin: 0;
 }
 
-#blocklyDiv {
+.layout {
+  display: flex;
   height: 100%;
   width: 100%;
+}
+
+#blocklyDiv {
+  flex: 1 1 50%;
+  height: 100%;
+}
+
+#previewDiv {
+  flex: 1 1 50%;
+  height: 100%;
+  overflow: auto;
+  border-left: 1px solid #ccc;
+}
+
+#previewDiv img {
+  max-width: 100%;
 }

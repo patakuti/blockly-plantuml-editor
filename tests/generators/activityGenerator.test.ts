@@ -1,0 +1,97 @@
+import { beforeEach, describe, expect, it } from "vitest";
+import * as Blockly from "blockly/core";
+import { defineActivityBlocks } from "../../src/blocks/activity/blocks";
+import { activityWorkspaceToCode } from "../../src/generators/activityGenerator";
+
+defineActivityBlocks();
+
+function connectChain(...blocks: Blockly.Block[]): void {
+  for (let i = 0; i < blocks.length - 1; i++) {
+    const next = blocks[i].nextConnection;
+    const prev = blocks[i + 1].previousConnection;
+    if (!next || !prev) throw new Error("blocks in chain must have next/previous connections");
+    next.connect(prev);
+  }
+}
+
+describe("activityWorkspaceToCode", () => {
+  let workspace: Blockly.Workspace;
+
+  beforeEach(() => {
+    workspace = new Blockly.Workspace();
+  });
+
+  it("generates start/stop with no actions in between", () => {
+    const start = workspace.newBlock("activity_start");
+    const stop = workspace.newBlock("activity_stop");
+    connectChain(start, stop);
+
+    expect(activityWorkspaceToCode(workspace)).toBe("@startuml\nstart\nstop\n@enduml\n");
+  });
+
+  it("generates a single action between start and stop", () => {
+    const start = workspace.newBlock("activity_start");
+    const action = workspace.newBlock("activity_action");
+    action.setFieldValue("Do something", "TEXT");
+    const stop = workspace.newBlock("activity_stop");
+    connectChain(start, action, stop);
+
+    expect(activityWorkspaceToCode(workspace)).toBe(
+      "@startuml\nstart\n:Do something;\nstop\n@enduml\n",
+    );
+  });
+
+  it("chains multiple actions in order", () => {
+    const start = workspace.newBlock("activity_start");
+    const first = workspace.newBlock("activity_action");
+    first.setFieldValue("First", "TEXT");
+    const second = workspace.newBlock("activity_action");
+    second.setFieldValue("Second", "TEXT");
+    const stop = workspace.newBlock("activity_stop");
+    connectChain(start, first, second, stop);
+
+    expect(activityWorkspaceToCode(workspace)).toBe(
+      "@startuml\nstart\n:First;\n:Second;\nstop\n@enduml\n",
+    );
+  });
+
+  it("escapes @ to prevent breaking out of the diagram (verified against the PlantUML server)", () => {
+    const start = workspace.newBlock("activity_start");
+    const action = workspace.newBlock("activity_action");
+    action.setFieldValue("Escape @enduml here", "TEXT");
+    const stop = workspace.newBlock("activity_stop");
+    connectChain(start, action, stop);
+
+    expect(activityWorkspaceToCode(workspace)).toBe(
+      "@startuml\nstart\n:Escape &#64;enduml here;\nstop\n@enduml\n",
+    );
+  });
+
+  it("wraps a block comment as a PlantUML note", () => {
+    const start = workspace.newBlock("activity_start");
+    const action = workspace.newBlock("activity_action");
+    action.setFieldValue("Do something", "TEXT");
+    action.setCommentText("a helpful note");
+    const stop = workspace.newBlock("activity_stop");
+    connectChain(start, action, stop);
+
+    expect(activityWorkspaceToCode(workspace)).toBe(
+      "@startuml\nstart\n:Do something;\nnote right\na helpful note\nend note\nstop\n@enduml\n",
+    );
+  });
+
+  it("skips disabled blocks", () => {
+    const start = workspace.newBlock("activity_start");
+    const action = workspace.newBlock("activity_action");
+    action.setFieldValue("Skip me", "TEXT");
+    action.setDisabledReason(true, "test");
+    const stop = workspace.newBlock("activity_stop");
+    connectChain(start, action, stop);
+
+    expect(activityWorkspaceToCode(workspace)).toBe("@startuml\nstart\nstop\n@enduml\n");
+  });
+
+  it("returns an empty shell when there is no start block", () => {
+    expect(activityWorkspaceToCode(workspace)).toBe("@startuml\n@enduml\n");
+  });
+});

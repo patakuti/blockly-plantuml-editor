@@ -3,6 +3,9 @@ dist
 *.local
 *.tsbuildinfo
 
+# Claude Code local tool state
+/.claude/
+
 # Project planning docs are intentionally not version-controlled (see CLAUDE.md)
 /00_concept-design.md
 /01_requirements.md
