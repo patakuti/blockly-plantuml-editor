@@ -21,7 +21,7 @@ export function createToolbar(container: HTMLElement, options: ToolbarOptions): 
   saveButton.textContent = "Save JSON";
   saveButton.addEventListener("click", () => {
     const active = options.getActive();
-    exportWorkspaceJson(active.jsonFilename, active.workspace);
+    void exportWorkspaceJson(active.jsonFilename, active.workspace);
   });
 
   const loadButton = document.createElement("button");
@@ -43,7 +43,7 @@ export function createToolbar(container: HTMLElement, options: ToolbarOptions): 
   exportButton.textContent = "Export PlantUML";
   exportButton.addEventListener("click", () => {
     const active = options.getActive();
-    exportPlantUmlText(active.plantUmlFilename, active.toCode(active.workspace));
+    void exportPlantUmlText(active.plantUmlFilename, active.toCode(active.workspace));
   });
 
   const undoButton = document.createElement("button");
