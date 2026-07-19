@@ -1,10 +1,10 @@
 import * as Blockly from "blockly/core";
-import { SEQUENCE_STATEMENT } from "./constants";
+import { SEQUENCE_STATEMENT, PARTICIPANT_STATEMENT } from "./constants";
 import { defineSequenceAltMutator } from "./altMutator";
 
 /**
- * Scans the workspace for declared participants (see 02_design.md 5.2.1:
- * declaration order is inferred from Y position, not a connection chain)
+ * Scans the workspace for declared participants (see 02_design.md 12.11:
+ * declaration order follows the participant chain, reorderable by dragging)
  * and returns them as dropdown options for Message/Note "from"/"to" fields.
  */
 function participantOptions(this: Blockly.FieldDropdown): Blockly.MenuOption[] {
@@ -52,8 +52,10 @@ export function defineSequenceBlocks(): void {
           text: "Participant",
         },
       ],
+      previousStatement: PARTICIPANT_STATEMENT,
+      nextStatement: PARTICIPANT_STATEMENT,
       colour: 160,
-      tooltip: "Declares a participant (lifeline).",
+      tooltip: "Declares a participant (lifeline). Drag to reorder among other participants.",
     },
     {
       type: "sequence_alt",
