@@ -43,6 +43,21 @@ export function createToolbar(container: HTMLElement, options: ToolbarOptions): 
     exportPlantUmlText(active.plantUmlFilename, active.toCode(active.workspace));
   });
 
-  toolbar.append(saveButton, loadButton, fileInput, exportButton);
+  const undoButton = document.createElement("button");
+  undoButton.textContent = "Undo";
+  undoButton.addEventListener("click", () => {
+    options.getActive().workspace.undo(false);
+  });
+
+  const clearButton = document.createElement("button");
+  clearButton.textContent = "Clear";
+  clearButton.addEventListener("click", () => {
+    if (!window.confirm("Clear the current diagram?")) return;
+    const active = options.getActive();
+    active.workspace.clear();
+    active.setUpInitialState?.(active.workspace);
+  });
+
+  toolbar.append(saveButton, loadButton, fileInput, exportButton, undoButton, clearButton);
   container.appendChild(toolbar);
 }
