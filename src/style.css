@@ -5,7 +5,78 @@ body,
   margin: 0;
 }
 
+#app {
+  display: flex;
+  flex-direction: column;
+}
+
+.tab-bar {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 4px;
+  padding: 8px 8px 0;
+}
+
+.tab-button {
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  border-bottom: none;
+  background: #eee;
+  cursor: pointer;
+}
+
+.tab-button.active {
+  background: #fff;
+  font-weight: bold;
+}
+
+.toolbar {
+  flex: 0 0 auto;
+  padding: 8px;
+  border-bottom: 1px solid #ccc;
+  display: flex;
+  gap: 8px;
+}
+
+.layout {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+}
+
 #blocklyDiv {
+  flex: 1 1 50%;
+  height: 100%;
+  position: relative;
+}
+
+.workspace-instance {
   height: 100%;
   width: 100%;
+}
+
+#previewDiv {
+  flex: 1 1 50%;
+  height: 100%;
+  overflow: auto;
+  border-left: 1px solid #ccc;
+}
+
+#previewDiv img {
+  max-width: 100%;
+}
+
+.preview-source {
+  margin: 8px;
+  padding: 8px;
+  background: #f7f7f7;
+  border: 1px solid #ddd;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.preview-source mark {
+  background: #ffe08a;
 }
