@@ -205,4 +205,29 @@ describe("sequenceWorkspaceToCode", () => {
       '@startuml\nparticipant "Alice"\nnote left of "Alice": remember this\n@enduml\n',
     );
   });
+
+  it("generates nested containers (alt branch containing a loop containing a message)", () => {
+    const alice = workspace.newBlock("sequence_participant");
+    alice.setFieldValue("Alice", "NAME");
+    const bob = workspace.newBlock("sequence_participant");
+    bob.setFieldValue("Bob", "NAME");
+
+    const alt = workspace.newBlock("sequence_alt");
+    alt.setFieldValue("retryable", "COND");
+    const loop = workspace.newBlock("sequence_loop");
+    loop.setFieldValue("3 times", "COND");
+    const innerMessage = workspace.newBlock("sequence_message");
+    innerMessage.setFieldValue("Alice", "FROM");
+    innerMessage.setFieldValue("Bob", "TO");
+    innerMessage.setFieldValue("ping", "TEXT");
+    loop.getInput("DO")!.connection!.connect(innerMessage.previousConnection!);
+    alt.getInput("DO0")!.connection!.connect(loop.previousConnection!);
+
+    expect(sequenceWorkspaceToCode(workspace)).toBe(
+      '@startuml\nparticipant "Alice"\nparticipant "Bob"\n' +
+        "alt (retryable)\n" +
+        'loop (3 times)\n"Alice" -> "Bob": ping\nend\n' +
+        "end\n@enduml\n",
+    );
+  });
 });

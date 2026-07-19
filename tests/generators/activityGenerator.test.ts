@@ -227,4 +227,34 @@ describe("activityWorkspaceToCode", () => {
     forkBlock.loadExtraState!({ extraBranchCount: 0 });
     expect(forkBlock.getInput("BRANCH2")).toBeNull();
   });
+
+  it("generates nested containers (fork branch containing an if containing a while)", () => {
+    const start = workspace.newBlock("activity_start");
+    const forkBlock = workspace.newBlock("activity_fork");
+
+    const ifBlock = workspace.newBlock("activity_if");
+    ifBlock.setFieldValue("x > 0", "COND");
+    const whileBlock = workspace.newBlock("activity_while");
+    whileBlock.setFieldValue("x < 10", "COND");
+    const innerAction = workspace.newBlock("activity_action");
+    innerAction.setFieldValue("increment x", "TEXT");
+    whileBlock.getInput("DO")!.connection!.connect(innerAction.previousConnection!);
+    ifBlock.getInput("DO0")!.connection!.connect(whileBlock.previousConnection!);
+    forkBlock.getInput("BRANCH0")!.connection!.connect(ifBlock.previousConnection!);
+
+    const branchB = workspace.newBlock("activity_action");
+    branchB.setFieldValue("branch B", "TEXT");
+    forkBlock.getInput("BRANCH1")!.connection!.connect(branchB.previousConnection!);
+
+    const stop = workspace.newBlock("activity_stop");
+    connectChain(start, forkBlock, stop);
+
+    expect(activityWorkspaceToCode(workspace)).toBe(
+      "@startuml\nstart\n" +
+        "fork\n" +
+        "if (x > 0) then (yes)\nwhile (x < 10)\n:increment x;\nendwhile\nendif\n" +
+        "fork again\n:branch B;\n" +
+        "end fork\nstop\n@enduml\n",
+    );
+  });
 });
