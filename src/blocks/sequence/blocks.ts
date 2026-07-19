@@ -143,4 +143,25 @@ export function defineSequenceBlocks(): void {
       this.setTooltip("Sends a message from one participant to another.");
     },
   };
+
+  Blockly.Blocks["sequence_note"] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField("note")
+        .appendField(
+          new Blockly.FieldDropdown([
+            ["left of", "left"],
+            ["right of", "right"],
+          ]),
+          "SIDE",
+        )
+        .appendField(new ParticipantDropdownField(participantOptions), "TARGET")
+        .appendField(":")
+        .appendField(new Blockly.FieldTextInput("note"), "TEXT");
+      this.setPreviousStatement(true, SEQUENCE_STATEMENT);
+      this.setNextStatement(true, SEQUENCE_STATEMENT);
+      this.setColour(160);
+      this.setTooltip("Attaches a note to a participant's lifeline.");
+    },
+  };
 }

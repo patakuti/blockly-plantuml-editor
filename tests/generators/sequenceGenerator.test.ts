@@ -191,4 +191,18 @@ describe("sequenceWorkspaceToCode", () => {
       '@startuml\nloop (3 times)\n"" -> "": ping\nend\n@enduml\n',
     );
   });
+
+  it("generates a note attached to a participant", () => {
+    const alice = workspace.newBlock("sequence_participant");
+    alice.setFieldValue("Alice", "NAME");
+
+    const note = workspace.newBlock("sequence_note");
+    note.setFieldValue("left", "SIDE");
+    note.setFieldValue("Alice", "TARGET");
+    note.setFieldValue("remember this", "TEXT");
+
+    expect(sequenceWorkspaceToCode(workspace)).toBe(
+      '@startuml\nparticipant "Alice"\nnote left of "Alice": remember this\n@enduml\n',
+    );
+  });
 });

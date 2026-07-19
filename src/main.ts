@@ -3,10 +3,12 @@ import * as En from "blockly/msg/en";
 import "./style.css";
 import { defineActivityBlocks } from "./blocks/activity/blocks";
 import { activityToolbox } from "./blocks/activity/toolbox";
-import { activityWorkspaceToCode } from "./generators/activityGenerator";
+import { activityGenerator, activityWorkspaceToCode } from "./generators/activityGenerator";
 import { defineSequenceBlocks } from "./blocks/sequence/blocks";
 import { sequenceToolbox } from "./blocks/sequence/toolbox";
-import { sequenceWorkspaceToCode } from "./generators/sequenceGenerator";
+import { sequenceGenerator, sequenceWorkspaceToCode } from "./generators/sequenceGenerator";
+import { validateSequenceWorkspace } from "./blocks/sequence/validation";
+import { getBlockOwnCode } from "./generators/common/blockSnippet";
 import { PreviewPanel } from "./preview/previewPanel";
 import { saveToLocalStorage } from "./workspace/persistence";
 import {
@@ -71,6 +73,7 @@ const diagramConfigs: DiagramConfig[] = [
     label: "Activity Diagram",
     toolbox: activityToolbox,
     toCode: activityWorkspaceToCode,
+    generator: activityGenerator,
     jsonFilename: "activity-diagram.json",
     plantUmlFilename: "activity-diagram.puml",
     setUpInitialState: setUpFixedStartStop,
@@ -80,8 +83,10 @@ const diagramConfigs: DiagramConfig[] = [
     label: "Sequence Diagram",
     toolbox: sequenceToolbox,
     toCode: sequenceWorkspaceToCode,
+    generator: sequenceGenerator,
     jsonFilename: "sequence-diagram.json",
     plantUmlFilename: "sequence-diagram.puml",
+    onValidate: validateSequenceWorkspace,
   },
 ];
 
@@ -98,9 +103,17 @@ function updatePreview(): void {
 }
 
 for (const instance of instances) {
+  instance.onValidate?.(instance.workspace);
   instance.workspace.addChangeListener((event) => {
+    if (event instanceof Blockly.Events.Selected) {
+      if (instance.key !== activeKey) return;
+      const block = event.newElementId ? instance.workspace.getBlockById(event.newElementId) : null;
+      previewPanel.highlight(block ? getBlockOwnCode(instance.generator, block) : null);
+      return;
+    }
     if (event.isUiEvent) return;
     saveToLocalStorage(instance.key, instance.workspace);
+    instance.onValidate?.(instance.workspace);
     if (instance.key === activeKey) updatePreview();
   });
 }

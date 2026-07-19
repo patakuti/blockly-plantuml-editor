@@ -36,6 +36,12 @@ sequenceGenerator.forBlock["sequence_loop"] = (block, generator) => {
   const body = generateStatements(generator, block.getInputTargetBlock("DO"));
   return `loop (${cond})\n${body}end\n`;
 };
+sequenceGenerator.forBlock["sequence_note"] = (block) => {
+  const side = block.getFieldValue("SIDE");
+  const target = escapeQuotedName(block.getFieldValue("TARGET"));
+  const text = escapeText(block.getFieldValue("TEXT"));
+  return `note ${side} of "${target}": ${text}\n`;
+};
 
 /**
  * Generates full PlantUML source for the sequence-diagram workspace.

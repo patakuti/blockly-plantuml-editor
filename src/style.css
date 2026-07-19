@@ -66,3 +66,17 @@ body,
 #previewDiv img {
   max-width: 100%;
 }
+
+.preview-source {
+  margin: 8px;
+  padding: 8px;
+  background: #f7f7f7;
+  border: 1px solid #ddd;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.preview-source mark {
+  background: #ffe08a;
+}

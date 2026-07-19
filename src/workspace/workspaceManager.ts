@@ -6,10 +6,13 @@ export interface DiagramConfig {
   label: string;
   toolbox: Blockly.utils.toolbox.ToolboxInfo;
   toCode: (workspace: Blockly.Workspace) => string;
+  generator: Blockly.CodeGenerator;
   jsonFilename: string;
   plantUmlFilename: string;
   /** Only run when there's no saved state to restore (e.g. activity's fixed start/stop). */
   setUpInitialState?: (workspace: Blockly.WorkspaceSvg) => void;
+  /** Run on every non-UI change to refresh block warnings (e.g. FR-SEQ-07/09). */
+  onValidate?: (workspace: Blockly.WorkspaceSvg) => void;
 }
 
 export interface DiagramInstance extends DiagramConfig {
