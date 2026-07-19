@@ -3,7 +3,7 @@ import * as En from "blockly/msg/en";
 import "./style.css";
 import { defineActivityBlocks } from "./blocks/activity/blocks";
 import { activityToolbox } from "./blocks/activity/toolbox";
-import { setUpFixedStartStop } from "./blocks/activity/fixedStartStop";
+import { setUpFixedStartStop, enforceFixedStartStopInvariants } from "./blocks/activity/fixedStartStop";
 import { activityGenerator, activityWorkspaceToCode } from "./generators/activityGenerator";
 import { defineSequenceBlocks } from "./blocks/sequence/blocks";
 import { sequenceToolbox } from "./blocks/sequence/toolbox";
@@ -56,6 +56,7 @@ const diagramConfigs: DiagramConfig[] = [
     jsonFilename: "activity-diagram.json",
     plantUmlFilename: "activity-diagram.puml",
     setUpInitialState: setUpFixedStartStop,
+    onValidate: enforceFixedStartStopInvariants,
   },
   {
     key: "sequence",
