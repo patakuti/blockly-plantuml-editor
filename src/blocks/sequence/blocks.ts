@@ -1,5 +1,6 @@
 import * as Blockly from "blockly/core";
 import { SEQUENCE_STATEMENT } from "./constants";
+import { defineSequenceAltMutator } from "./altMutator";
 
 /**
  * Scans the workspace for declared participants (see 02_design.md 5.2.1:
@@ -54,7 +55,79 @@ export function defineSequenceBlocks(): void {
       colour: 160,
       tooltip: "Declares a participant (lifeline).",
     },
+    {
+      type: "sequence_alt",
+      message0: "alt ( %1 )",
+      args0: [
+        {
+          type: "field_input",
+          name: "COND",
+          text: "condition",
+        },
+      ],
+      message1: "%1",
+      args1: [
+        {
+          type: "input_statement",
+          name: "DO0",
+          check: SEQUENCE_STATEMENT,
+        },
+      ],
+      previousStatement: SEQUENCE_STATEMENT,
+      nextStatement: SEQUENCE_STATEMENT,
+      colour: 210,
+      tooltip: "Branch based on a condition. Use the gear icon to add/remove else branches.",
+      mutator: "sequence_alt_mutator",
+    },
+    {
+      type: "sequence_opt",
+      message0: "opt ( %1 )",
+      args0: [
+        {
+          type: "field_input",
+          name: "COND",
+          text: "condition",
+        },
+      ],
+      message1: "%1",
+      args1: [
+        {
+          type: "input_statement",
+          name: "DO",
+          check: SEQUENCE_STATEMENT,
+        },
+      ],
+      previousStatement: SEQUENCE_STATEMENT,
+      nextStatement: SEQUENCE_STATEMENT,
+      colour: 210,
+      tooltip: "An optional block, executed only if the condition holds.",
+    },
+    {
+      type: "sequence_loop",
+      message0: "loop ( %1 )",
+      args0: [
+        {
+          type: "field_input",
+          name: "COND",
+          text: "condition",
+        },
+      ],
+      message1: "%1",
+      args1: [
+        {
+          type: "input_statement",
+          name: "DO",
+          check: SEQUENCE_STATEMENT,
+        },
+      ],
+      previousStatement: SEQUENCE_STATEMENT,
+      nextStatement: SEQUENCE_STATEMENT,
+      colour: 210,
+      tooltip: "Repeats its contents while the condition holds.",
+    },
   ]);
+
+  defineSequenceAltMutator();
 
   Blockly.Blocks["sequence_message"] = {
     init(this: Blockly.Block) {

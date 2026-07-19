@@ -110,4 +110,85 @@ describe("sequenceWorkspaceToCode", () => {
       '@startuml\nparticipant "Alice"\nparticipant "Bob"\n"Alice" -> "Bob": hi\n@enduml\n',
     );
   });
+
+  it("generates an alt with no else branches by default", () => {
+    const alt = workspace.newBlock("sequence_alt");
+    alt.setFieldValue("success", "COND");
+    const message = workspace.newBlock("sequence_message");
+    message.setFieldValue("hi", "TEXT");
+    alt.getInput("DO0")!.connection!.connect(message.previousConnection!);
+
+    expect(sequenceWorkspaceToCode(workspace)).toBe(
+      '@startuml\nalt (success)\n"" -> "": hi\nend\n@enduml\n',
+    );
+  });
+
+  it("generates an alt with extra else branches added via the mutator", () => {
+    const alt = workspace.newBlock("sequence_alt");
+    alt.setFieldValue("success", "COND");
+    alt.loadExtraState!({ extraElseCount: 2 });
+
+    const doMessage = workspace.newBlock("sequence_message");
+    doMessage.setFieldValue("ok", "TEXT");
+    alt.getInput("DO0")!.connection!.connect(doMessage.previousConnection!);
+
+    alt.setFieldValue("failure", "ELSE_COND_1");
+    const else1Message = workspace.newBlock("sequence_message");
+    else1Message.setFieldValue("retry", "TEXT");
+    alt.getInput("ELSE_BODY_1")!.connection!.connect(else1Message.previousConnection!);
+
+    alt.setFieldValue("timeout", "ELSE_COND_2");
+    const else2Message = workspace.newBlock("sequence_message");
+    else2Message.setFieldValue("give up", "TEXT");
+    alt.getInput("ELSE_BODY_2")!.connection!.connect(else2Message.previousConnection!);
+
+    expect(sequenceWorkspaceToCode(workspace)).toBe(
+      "@startuml\n" +
+        "alt (success)\n" +
+        '"" -> "": ok\n' +
+        "else (failure)\n" +
+        '"" -> "": retry\n' +
+        "else (timeout)\n" +
+        '"" -> "": give up\n' +
+        "end\n@enduml\n",
+    );
+  });
+
+  it("round-trips the alt else-count mutator state", () => {
+    const alt = workspace.newBlock("sequence_alt");
+    expect(alt.saveExtraState!()).toEqual({ extraElseCount: 0 });
+    expect(alt.getInput("ELSE_LABEL_1")).toBeNull();
+
+    alt.loadExtraState!({ extraElseCount: 2 });
+    expect(alt.saveExtraState!()).toEqual({ extraElseCount: 2 });
+    expect(alt.getInput("ELSE_LABEL_1")).not.toBeNull();
+    expect(alt.getInput("ELSE_LABEL_2")).not.toBeNull();
+
+    alt.loadExtraState!({ extraElseCount: 0 });
+    expect(alt.getInput("ELSE_LABEL_1")).toBeNull();
+  });
+
+  it("generates an opt block", () => {
+    const opt = workspace.newBlock("sequence_opt");
+    opt.setFieldValue("maybe", "COND");
+    const message = workspace.newBlock("sequence_message");
+    message.setFieldValue("extra", "TEXT");
+    opt.getInput("DO")!.connection!.connect(message.previousConnection!);
+
+    expect(sequenceWorkspaceToCode(workspace)).toBe(
+      '@startuml\nopt (maybe)\n"" -> "": extra\nend\n@enduml\n',
+    );
+  });
+
+  it("generates a loop block", () => {
+    const loop = workspace.newBlock("sequence_loop");
+    loop.setFieldValue("3 times", "COND");
+    const message = workspace.newBlock("sequence_message");
+    message.setFieldValue("ping", "TEXT");
+    loop.getInput("DO")!.connection!.connect(message.previousConnection!);
+
+    expect(sequenceWorkspaceToCode(workspace)).toBe(
+      '@startuml\nloop (3 times)\n"" -> "": ping\nend\n@enduml\n',
+    );
+  });
 });

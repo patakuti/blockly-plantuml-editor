@@ -11,5 +11,17 @@ export const sequenceToolbox: Blockly.utils.toolbox.ToolboxInfo = {
       kind: "block",
       type: "sequence_message",
     },
+    {
+      kind: "block",
+      type: "sequence_alt",
+    },
+    {
+      kind: "block",
+      type: "sequence_opt",
+    },
+    {
+      kind: "block",
+      type: "sequence_loop",
+    },
   ],
 };

@@ -14,6 +14,28 @@ sequenceGenerator.forBlock["sequence_message"] = (block) => {
   const text = escapeText(block.getFieldValue("TEXT"));
   return `"${from}" -> "${to}": ${text}\n`;
 };
+sequenceGenerator.forBlock["sequence_alt"] = (block, generator) => {
+  const cond = escapeText(block.getFieldValue("COND"));
+  let code = `alt (${cond})\n`;
+  code += generateStatements(generator, block.getInputTargetBlock("DO0"));
+  for (let i = 1; block.getInput(`ELSE_LABEL_${i}`); i++) {
+    const elseCond = escapeText(block.getFieldValue(`ELSE_COND_${i}`));
+    code += `else (${elseCond})\n`;
+    code += generateStatements(generator, block.getInputTargetBlock(`ELSE_BODY_${i}`));
+  }
+  code += "end\n";
+  return code;
+};
+sequenceGenerator.forBlock["sequence_opt"] = (block, generator) => {
+  const cond = escapeText(block.getFieldValue("COND"));
+  const body = generateStatements(generator, block.getInputTargetBlock("DO"));
+  return `opt (${cond})\n${body}end\n`;
+};
+sequenceGenerator.forBlock["sequence_loop"] = (block, generator) => {
+  const cond = escapeText(block.getFieldValue("COND"));
+  const body = generateStatements(generator, block.getInputTargetBlock("DO"));
+  return `loop (${cond})\n${body}end\n`;
+};
 
 /**
  * Generates full PlantUML source for the sequence-diagram workspace.
@@ -21,9 +43,10 @@ sequenceGenerator.forBlock["sequence_message"] = (block) => {
  * Participants aren't a next-connection chain (see 02_design.md 5.2.1), so
  * they're generated directly in Y-position order rather than via
  * generateStatements(). The message chain has no fixed anchor block (unlike
- * activity_start), so the topmost message block is used as the chain head;
- * any additional disconnected message chains are not included (same class
- * of known limitation as the activity_start/stop chain-detachment case).
+ * activity_start), so the topmost statement block (message/alt/opt/loop) is
+ * used as the chain head; any additional disconnected chains are not
+ * included (same class of known limitation as the activity_start/stop
+ * chain-detachment case).
  */
 export function sequenceWorkspaceToCode(workspace: Blockly.Workspace): string {
   const participantsCode = workspace
@@ -31,9 +54,9 @@ export function sequenceWorkspaceToCode(workspace: Blockly.Workspace): string {
     .map((block) => sequenceGenerator.blockToCode(block, true) as string)
     .join("");
 
-  const firstMessage =
-    workspace.getTopBlocks(true).find((block) => block.type === "sequence_message") ?? null;
-  const messagesCode = generateStatements(sequenceGenerator, firstMessage);
+  const firstStatement =
+    workspace.getTopBlocks(true).find((block) => block.previousConnection !== null) ?? null;
+  const messagesCode = generateStatements(sequenceGenerator, firstStatement);
 
   return `@startuml\n${participantsCode}${messagesCode}@enduml\n`;
 }
