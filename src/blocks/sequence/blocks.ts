@@ -1,10 +1,10 @@
 import * as Blockly from "blockly/core";
-import { SEQUENCE_STATEMENT } from "./constants";
+import { SEQUENCE_STATEMENT, PARTICIPANT_STATEMENT } from "./constants";
 import { defineSequenceAltMutator } from "./altMutator";
 
 /**
- * Scans the workspace for declared participants (see 02_design.md 5.2.1:
- * declaration order is inferred from Y position, not a connection chain)
+ * Scans the workspace for declared participants (see 02_design.md 12.11:
+ * declaration order follows the participant chain, reorderable by dragging)
  * and returns them as dropdown options for Message/Note "from"/"to" fields.
  */
 function participantOptions(this: Blockly.FieldDropdown): Blockly.MenuOption[] {
@@ -52,8 +52,10 @@ export function defineSequenceBlocks(): void {
           text: "Participant",
         },
       ],
+      previousStatement: PARTICIPANT_STATEMENT,
+      nextStatement: PARTICIPANT_STATEMENT,
       colour: 160,
-      tooltip: "Declares a participant (lifeline).",
+      tooltip: "Declares a participant (lifeline). Drag to reorder among other participants.",
     },
     {
       type: "sequence_alt",
@@ -162,6 +164,17 @@ export function defineSequenceBlocks(): void {
       this.setNextStatement(true, SEQUENCE_STATEMENT);
       this.setColour(160);
       this.setTooltip("Attaches a note to a participant's lifeline.");
+
+      // Default TARGET to the first declared participant so a freshly dropped
+      // note renders immediately instead of sitting on an empty selection
+      // (FR-SEQ-10). A saved workspace's actual TARGET value, if any, is
+      // applied by the deserializer right after this and overrides it; a
+      // flyout preview instance sees no participants in its own workspace and
+      // is left untouched.
+      const names = this.workspace
+        .getBlocksByType("sequence_participant", true)
+        .map((b) => b.getFieldValue("NAME") as string);
+      if (names.length > 0) this.setFieldValue(names[0], "TARGET");
     },
   };
 }

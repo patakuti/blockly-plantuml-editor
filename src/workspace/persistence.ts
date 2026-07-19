@@ -15,9 +15,9 @@ export function loadFromLocalStorage(diagramType: string, workspace: Blockly.Wor
   return true;
 }
 
-export function exportWorkspaceJson(filename: string, workspace: Blockly.Workspace): void {
+export async function exportWorkspaceJson(filename: string, workspace: Blockly.Workspace): Promise<void> {
   const state = Blockly.serialization.workspaces.save(workspace);
-  downloadTextFile(filename, JSON.stringify(state, null, 2), "application/json");
+  await saveTextFile(filename, JSON.stringify(state, null, 2), "application/json", [".json"]);
 }
 
 export async function importWorkspaceJson(file: File, workspace: Blockly.Workspace): Promise<void> {
@@ -26,8 +26,38 @@ export async function importWorkspaceJson(file: File, workspace: Blockly.Workspa
   Blockly.serialization.workspaces.load(state, workspace);
 }
 
-export function exportPlantUmlText(filename: string, plantUmlText: string): void {
-  downloadTextFile(filename, plantUmlText, "text/plain");
+export async function exportPlantUmlText(filename: string, plantUmlText: string): Promise<void> {
+  await saveTextFile(filename, plantUmlText, "text/plain", [".puml", ".txt"]);
+}
+
+/**
+ * Saves `content` to a file. Uses the File System Access API's native save
+ * dialog when available (Chrome/Edge); falls back to the classic
+ * anchor-download trick everywhere else, e.g. Firefox (01_requirements.md
+ * FR-SAVE-06, 02_design.md 12.6).
+ */
+async function saveTextFile(
+  filename: string,
+  content: string,
+  mimeType: string,
+  extensions: string[],
+): Promise<void> {
+  if (window.showSaveFilePicker) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: filename,
+        types: [{ accept: { [mimeType]: extensions } }],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(content);
+      await writable.close();
+      return;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return; // user cancelled the dialog
+      throw error;
+    }
+  }
+  downloadTextFile(filename, content, mimeType);
 }
 
 function downloadTextFile(filename: string, content: string, mimeType: string): void {

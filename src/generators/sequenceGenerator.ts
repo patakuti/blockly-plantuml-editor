@@ -46,22 +46,29 @@ sequenceGenerator.forBlock["sequence_note"] = (block) => {
 /**
  * Generates full PlantUML source for the sequence-diagram workspace.
  *
- * Participants aren't a next-connection chain (see 02_design.md 5.2.1), so
- * they're generated directly in Y-position order rather than via
- * generateStatements(). The message chain has no fixed anchor block (unlike
- * activity_start), so the topmost statement block (message/alt/opt/loop) is
- * used as the chain head; any additional disconnected chains are not
- * included (same class of known limitation as the activity_start/stop
- * chain-detachment case).
+ * Participants chain together via PARTICIPANT_STATEMENT (02_design.md 12.11)
+ * so they can be reordered by dragging like any other stack. There's no
+ * single fixed anchor (unlike activity_start), so every top-level
+ * sequence_participant chain head is walked via generateStatements() and the
+ * results concatenated in top-block order (top-to-bottom); a participant
+ * left disconnected from the others is still its own one-block chain and so
+ * is never silently dropped. The message chain has no fixed anchor block
+ * either, so the topmost non-participant statement block (message/alt/opt/
+ * loop) is used as its chain head; any additional disconnected message
+ * chains are not included (same class of known limitation as the
+ * activity_start/stop chain-detachment case).
  */
 export function sequenceWorkspaceToCode(workspace: Blockly.Workspace): string {
   const participantsCode = workspace
-    .getBlocksByType("sequence_participant", true)
-    .map((block) => sequenceGenerator.blockToCode(block, true) as string)
+    .getTopBlocks(true)
+    .filter((block) => block.type === "sequence_participant")
+    .map((head) => generateStatements(sequenceGenerator, head))
     .join("");
 
   const firstStatement =
-    workspace.getTopBlocks(true).find((block) => block.previousConnection !== null) ?? null;
+    workspace
+      .getTopBlocks(true)
+      .find((block) => block.type !== "sequence_participant" && block.previousConnection !== null) ?? null;
   const messagesCode = generateStatements(sequenceGenerator, firstStatement);
 
   return `@startuml\n${participantsCode}${messagesCode}@enduml\n`;

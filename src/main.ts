@@ -1,6 +1,7 @@
 import * as Blockly from "blockly/core";
 import * as En from "blockly/msg/en";
 import "./style.css";
+import { installUnifiedBlockRangeOverrides } from "./blocks/common/blockRangeOverrides";
 import { defineActivityBlocks } from "./blocks/activity/blocks";
 import { activityToolbox } from "./blocks/activity/toolbox";
 import { setUpFixedStartStop, enforceFixedStartStopInvariants } from "./blocks/activity/fixedStartStop";
@@ -20,6 +21,7 @@ import {
 } from "./workspace/workspaceManager";
 import { createToolbar } from "./ui/toolbar";
 import { createTabs } from "./ui/tabs";
+import { installSplitter } from "./ui/splitter";
 
 const app = document.getElementById("app")!;
 
@@ -45,6 +47,7 @@ Blockly.setLocale(En as unknown as Record<string, string>);
 
 defineActivityBlocks();
 defineSequenceBlocks();
+installUnifiedBlockRangeOverrides();
 
 const diagramConfigs: DiagramConfig[] = [
   {
@@ -79,6 +82,7 @@ let activeKey = instances[0].key;
 
 function updatePreview(): void {
   const active = instanceByKey.get(activeKey)!;
+  previewPanel.setActiveFilename(active.plantUmlFilename);
   previewPanel.scheduleUpdate(active.toCode(active.workspace));
 }
 
@@ -108,8 +112,13 @@ createTabs(
   },
 );
 
+installSplitter(layout, workspaceHost, previewDiv, () => {
+  Blockly.svgResize(instanceByKey.get(activeKey)!.workspace);
+});
+
 createToolbar(toolbarDiv, {
   getActive: (): DiagramInstance => instanceByKey.get(activeKey)!,
+  onPlantUmlServerChanged: updatePreview,
 });
 
 if (import.meta.env.DEV) {

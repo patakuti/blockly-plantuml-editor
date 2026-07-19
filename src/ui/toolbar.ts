@@ -1,13 +1,12 @@
-import {
-  exportPlantUmlText,
-  exportWorkspaceJson,
-  importWorkspaceJson,
-} from "../workspace/persistence";
+import { exportWorkspaceJson, importWorkspaceJson } from "../workspace/persistence";
+import { getPlantUmlServerBase, setPlantUmlServerBase } from "../preview/plantumlEncoder";
 import type { DiagramInstance } from "../workspace/workspaceManager";
 
 interface ToolbarOptions {
   /** Resolved on every click so the toolbar always targets the active tab. */
   getActive: () => DiagramInstance;
+  /** Called after the PlantUML server URL changes, so the preview can refresh immediately. */
+  onPlantUmlServerChanged: () => void;
 }
 
 export function createToolbar(container: HTMLElement, options: ToolbarOptions): void {
@@ -18,7 +17,7 @@ export function createToolbar(container: HTMLElement, options: ToolbarOptions): 
   saveButton.textContent = "Save JSON";
   saveButton.addEventListener("click", () => {
     const active = options.getActive();
-    exportWorkspaceJson(active.jsonFilename, active.workspace);
+    void exportWorkspaceJson(active.jsonFilename, active.workspace);
   });
 
   const loadButton = document.createElement("button");
@@ -36,13 +35,30 @@ export function createToolbar(container: HTMLElement, options: ToolbarOptions): 
   });
   loadButton.addEventListener("click", () => fileInput.click());
 
-  const exportButton = document.createElement("button");
-  exportButton.textContent = "Export PlantUML";
-  exportButton.addEventListener("click", () => {
-    const active = options.getActive();
-    exportPlantUmlText(active.plantUmlFilename, active.toCode(active.workspace));
+  const undoButton = document.createElement("button");
+  undoButton.textContent = "Undo";
+  undoButton.addEventListener("click", () => {
+    options.getActive().workspace.undo(false);
   });
 
-  toolbar.append(saveButton, loadButton, fileInput, exportButton);
+  const clearButton = document.createElement("button");
+  clearButton.textContent = "Clear";
+  clearButton.addEventListener("click", () => {
+    if (!window.confirm("Clear the current diagram?")) return;
+    const active = options.getActive();
+    active.workspace.clear();
+    active.setUpInitialState?.(active.workspace);
+  });
+
+  const serverButton = document.createElement("button");
+  serverButton.textContent = "PlantUML Server";
+  serverButton.addEventListener("click", () => {
+    const input = window.prompt("PlantUML server URL:", getPlantUmlServerBase());
+    if (input === null) return;
+    setPlantUmlServerBase(input);
+    options.onPlantUmlServerChanged();
+  });
+
+  toolbar.append(saveButton, loadButton, fileInput, undoButton, clearButton, serverButton);
   container.appendChild(toolbar);
 }

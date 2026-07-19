@@ -30,6 +30,48 @@ describe("sequenceWorkspaceToCode", () => {
     );
   });
 
+  it("generates chained participants in connection order, reorderable by reconnecting", () => {
+    const alice = workspace.newBlock("sequence_participant");
+    alice.setFieldValue("Alice", "NAME");
+    const bob = workspace.newBlock("sequence_participant");
+    bob.setFieldValue("Bob", "NAME");
+    const carol = workspace.newBlock("sequence_participant");
+    carol.setFieldValue("Carol", "NAME");
+
+    alice.nextConnection!.connect(bob.previousConnection!);
+    bob.nextConnection!.connect(carol.previousConnection!);
+
+    expect(sequenceWorkspaceToCode(workspace)).toBe(
+      '@startuml\nparticipant "Alice"\nparticipant "Bob"\nparticipant "Carol"\n@enduml\n',
+    );
+
+    // Reorder by disconnecting the chain and reconnecting it as Bob -> Alice -> Carol.
+    alice.nextConnection!.disconnect();
+    bob.nextConnection!.disconnect();
+    bob.nextConnection!.connect(alice.previousConnection!);
+    alice.nextConnection!.connect(carol.previousConnection!);
+
+    expect(sequenceWorkspaceToCode(workspace)).toBe(
+      '@startuml\nparticipant "Bob"\nparticipant "Alice"\nparticipant "Carol"\n@enduml\n',
+    );
+  });
+
+  it("still includes a participant left disconnected from the rest", () => {
+    const alice = workspace.newBlock("sequence_participant");
+    alice.setFieldValue("Alice", "NAME");
+    const bob = workspace.newBlock("sequence_participant");
+    bob.setFieldValue("Bob", "NAME");
+    alice.nextConnection!.connect(bob.previousConnection!);
+
+    const dave = workspace.newBlock("sequence_participant");
+    dave.setFieldValue("Dave", "NAME");
+    dave.moveBy(0, -50); // above the Alice/Bob chain, but not connected to it
+
+    expect(sequenceWorkspaceToCode(workspace)).toBe(
+      '@startuml\nparticipant "Dave"\nparticipant "Alice"\nparticipant "Bob"\n@enduml\n',
+    );
+  });
+
   it("generates a message chain between declared participants", () => {
     const alice = workspace.newBlock("sequence_participant");
     alice.setFieldValue("Alice", "NAME");
