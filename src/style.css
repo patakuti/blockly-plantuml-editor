@@ -5,9 +5,23 @@ body,
   margin: 0;
 }
 
+#app {
+  display: flex;
+  flex-direction: column;
+}
+
+.toolbar {
+  flex: 0 0 auto;
+  padding: 8px;
+  border-bottom: 1px solid #ccc;
+  display: flex;
+  gap: 8px;
+}
+
 .layout {
   display: flex;
-  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
   width: 100%;
 }
 

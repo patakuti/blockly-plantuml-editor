@@ -5,8 +5,15 @@ import { defineActivityBlocks } from "./blocks/activity/blocks";
 import { activityToolbox } from "./blocks/activity/toolbox";
 import { activityWorkspaceToCode } from "./generators/activityGenerator";
 import { PreviewPanel } from "./preview/previewPanel";
+import { loadFromLocalStorage, saveToLocalStorage } from "./workspace/persistence";
+import { createToolbar } from "./ui/toolbar";
+
+const ACTIVITY_STORAGE_KEY = "activity";
 
 const app = document.getElementById("app")!;
+
+const toolbarDiv = document.createElement("div");
+app.appendChild(toolbarDiv);
 
 const layout = document.createElement("div");
 layout.className = "layout";
@@ -50,7 +57,10 @@ function setUpFixedStartStop(ws: Blockly.WorkspaceSvg): void {
   }
 }
 
-setUpFixedStartStop(workspace);
+const restored = loadFromLocalStorage(ACTIVITY_STORAGE_KEY, workspace);
+if (!restored) {
+  setUpFixedStartStop(workspace);
+}
 
 const previewPanel = new PreviewPanel(previewDiv);
 
@@ -62,9 +72,17 @@ function updatePreview(): void {
 workspace.addChangeListener((event) => {
   if (event.isUiEvent) return;
   updatePreview();
+  saveToLocalStorage(ACTIVITY_STORAGE_KEY, workspace);
 });
 
 updatePreview();
+
+createToolbar(toolbarDiv, {
+  workspace,
+  jsonFilename: "activity-diagram.json",
+  plantUmlFilename: "activity-diagram.puml",
+  getPlantUmlText: () => activityWorkspaceToCode(workspace),
+});
 
 if (import.meta.env.DEV) {
   // Dev-only hook so the workspace can be driven from browser automation
