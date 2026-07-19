@@ -12,11 +12,13 @@ activityGenerator.forBlock["activity_action"] = (block) => {
 };
 activityGenerator.forBlock["activity_if"] = (block, generator) => {
   const cond = escapeText(block.getFieldValue("COND"));
+  const thenLabel = escapeText(block.getFieldValue("THEN_LABEL"));
   const thenBody = generateStatements(generator, block.getInputTargetBlock("DO0"));
-  let code = `if (${cond}) then (yes)\n${thenBody}`;
+  let code = `if (${cond}) then (${thenLabel})\n${thenBody}`;
   if (block.getInput("ELSE")) {
+    const elseLabel = escapeText(block.getFieldValue("ELSE_LABEL"));
     const elseBody = generateStatements(generator, block.getInputTargetBlock("ELSE"));
-    code += `else (no)\n${elseBody}`;
+    code += `else (${elseLabel})\n${elseBody}`;
   }
   code += "endif\n";
   return code;

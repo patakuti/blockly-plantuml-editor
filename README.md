@@ -4,7 +4,7 @@ A no-code editor for PlantUML **activity diagrams** and **sequence diagrams**, b
 
 ## Features
 
-- **Activity diagrams**: Start/Stop (fixed), Action, If/Then/Else, While, Repeat, Fork — with mutators for optional else branches and variable fork branch counts.
+- **Activity diagrams**: Start/Stop (fixed), Action, If/Then/Else, While, Repeat, Fork — If/Then/Else has an else-branch checkbox with editable then/else labels, Fork has a mutator for variable branch counts.
 - **Sequence diagrams**: Participant, Message, Alt/Opt/Loop, Note — with dynamic dropdowns that track declared participants and a mutator for optional else branches on Alt.
 - **Live preview**: generated PlantUML is rendered via the public PlantUML server (`https://www.plantuml.com/plantuml/svg/~h...`), debounced so dragging blocks doesn't spam requests.
 - **Source highlighting**: selecting a block highlights the PlantUML source text it generated, since the rendered SVG has no per-element mapping back to blocks.

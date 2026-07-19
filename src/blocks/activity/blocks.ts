@@ -1,5 +1,5 @@
 import * as Blockly from "blockly/core";
-import { defineActivityIfMutator } from "./ifMutator";
+import { defineActivityIfElseToggle } from "./ifElseToggle";
 import { defineActivityForkMutator } from "./forkMutator";
 import { ACTIVITY_STATEMENT } from "./constants";
 
@@ -36,12 +36,22 @@ export function defineActivityBlocks(): void {
     },
     {
       type: "activity_if",
-      message0: "if ( %1 ) then (yes)",
+      message0: "if ( %1 ) then (%2) else? %3",
       args0: [
         {
           type: "field_input",
           name: "COND",
           text: "condition",
+        },
+        {
+          type: "field_input",
+          name: "THEN_LABEL",
+          text: "yes",
+        },
+        {
+          type: "field_checkbox",
+          name: "ELSE_TOGGLE",
+          checked: false,
         },
       ],
       message1: "%1",
@@ -55,8 +65,8 @@ export function defineActivityBlocks(): void {
       previousStatement: ACTIVITY_STATEMENT,
       nextStatement: ACTIVITY_STATEMENT,
       colour: 210,
-      tooltip: "Branch based on a condition. Use the gear icon to add/remove an else branch.",
-      mutator: "activity_if_mutator",
+      tooltip: "Branch based on a condition. Check \"else?\" to add an else branch.",
+      mutator: "activity_if_else_toggle",
     },
     {
       type: "activity_while",
@@ -133,6 +143,6 @@ export function defineActivityBlocks(): void {
     },
   ]);
 
-  defineActivityIfMutator();
+  defineActivityIfElseToggle();
   defineActivityForkMutator();
 }
