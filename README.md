@@ -4,8 +4,9 @@ A no-code editor for PlantUML **activity diagrams** and **sequence diagrams**, b
 
 ## Features
 
-- **Activity diagrams**: Start/Stop (fixed), Action, If/Then/Else, While, Repeat, Fork — If/Then/Else has an else-branch checkbox with editable then/else labels, Fork has a mutator for variable branch counts.
+- **Activity diagrams**: Start/Stop (fixed), Action, If/Then/Else, While, Repeat, Fork, Partition, Swimlane — If/Then/Else has an else-branch checkbox with editable then/else labels, Fork has a mutator for variable branch counts, Partition groups a sequence of statements (nestable), Swimlane switches the current lane for subsequent statements (reorder by dragging to control lane order).
 - **Sequence diagrams**: Participant, Message, Alt/Opt/Loop, Note — with dynamic dropdowns that track declared participants, a mutator for optional else branches on Alt, and Participant blocks that chain together so they can be reordered by dragging.
+- **Notes on any block**: right-click a block and "Add Comment" to attach freeform text; it's rendered as a PlantUML `note` right after that block's own output. A "Note direction" right-click item (shown only on commented blocks) toggles the note between `right` (default) and `left`.
 - **Live preview**: generated PlantUML is rendered via a PlantUML server (public by default, configurable — see below), debounced so dragging blocks doesn't spam requests. The editor/preview split is resizable by dragging the handle between them.
 - **Source highlighting**: selecting a block highlights the PlantUML source text it generated, since the rendered SVG has no per-element mapping back to blocks.
 - **Consistency warnings**: sequence Message/Note blocks referencing a participant that no longer exists, and Alt/Opt/Loop nesting deeper than 3 levels, are flagged with a block warning icon.
@@ -40,7 +41,7 @@ src/
   blocks/
     activity/    # activity_* block definitions, mutators/toggles, toolbox
     sequence/    # sequence_* block definitions, mutators, toolbox, validation
-    common/      # cross-diagram block behavior (unified drag/duplicate/delete range)
+    common/      # cross-diagram block behavior (unified drag/duplicate/delete range, note direction menu)
   generators/
     common/      # shared statement-walking, note-wrapping, escaping helpers
     activityGenerator.ts
@@ -69,6 +70,10 @@ Free-form text (Action/Message/Note bodies, participant names) is escaped only w
 - A literal `@` is replaced with the HTML entity `&#64;`, since `@enduml` (or any `@...` directive) appearing anywhere in a line terminates the diagram early.
 - A `"` inside a participant/message-endpoint name is replaced with `'`, since PlantUML doesn't support escaping quotes inside a quoted identifier.
 - Semicolons, colons, and raw newlines were confirmed to render correctly unescaped and are left as-is.
+
+## Notes on swimlane ordering
+
+PlantUML rejects a `|Name|` swimlane marker that appears after `start` (verified against the public server). Since the activity diagram's Start block is always fixed first, `activityWorkspaceToCode()` automatically hoists each distinct lane name's first occurrence to right before `start`; the real markers stay in place as harmless re-declarations. Column order follows the order lanes first appear in the generated text, so dragging Swimlane blocks to reorder them (or placing empty ones up front) controls the lane display order.
 
 ## Known limitations
 
