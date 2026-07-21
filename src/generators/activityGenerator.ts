@@ -52,13 +52,21 @@ activityGenerator.forBlock["activity_swimlane"] = (block) => {
 
 /**
  * Generates full PlantUML source for the activity-diagram workspace.
- * Walks the chain starting at the (always-present, fixed) start block, via
- * the same generateStatements() used for container bodies (FR-COM-06).
+ * start/stop are optional (FR-ACT-01), so the workspace can contain several
+ * disconnected top-level chains. Exactly one is picked as the output chain
+ * (02_design.md 14.2): prefer the chain headed by an `activity_start` block
+ * (position order breaks ties if more than one exists -- see
+ * validateActivityWorkspace for the accompanying warning); otherwise fall
+ * back to the first top block in position order, whatever its type. Other
+ * chains are dropped entirely, not just their unreachable tail.
  */
 export function activityWorkspaceToCode(workspace: Blockly.Workspace): string {
-  const startBlock = workspace.getBlocksByType("activity_start", true)[0] ?? null;
-  const body = generateStatements(activityGenerator, startBlock);
-  return `@startuml\n${hoistSwimlaneDeclarations(body)}${body}@enduml\n`;
+  const topBlocks = workspace.getTopBlocks(true);
+  const headBlock = topBlocks.find((block) => block.type === "activity_start") ?? topBlocks[0] ?? null;
+  const body = generateStatements(activityGenerator, headBlock);
+  const pinnedLane =
+    headBlock?.type === "activity_start" ? ((headBlock.getFieldValue("SWIMLANE") as string) || null) : null;
+  return `@startuml\n${hoistSwimlaneDeclarations(body, pinnedLane)}${body}@enduml\n`;
 }
 
 /**
@@ -66,24 +74,43 @@ export function activityWorkspaceToCode(workspace: Blockly.Workspace): string {
  * diagram's first node -- verified against the public PlantUML server
  * (2026-07-21): any `|Name|` appearing after `start` fails with "This
  * swimlane must be defined at the start of the diagram", even when it's the
- * very first statement right after `start`. Since `activity_start` is always
- * the fixed first block (FR-ACT-01), a user-placed `activity_swimlane` block
- * can never itself be the first line of the generated text.
+ * very first statement right after `start`. This hoist runs unconditionally
+ * on the generated body regardless of whether the output chain happens to
+ * start with `activity_start` (FR-ACT-01 made start optional), so it also
+ * covers a chain that opens directly with an `activity_swimlane` block.
  *
  * Re-declaring an already-declared lane elsewhere in the diagram is fine
  * (verified), so the fix is to scan the already-generated body for each
  * distinct lane name's first occurrence (in that order -- which is also what
  * determines left-to-right column order, also verified) and emit one bare
- * `|Name|` per distinct lane before `start`, ahead of the real body.
+ * `|Name|` per distinct lane before the body.
+ *
+ * Which lane `start` itself lands in is determined by whichever `|Name|`
+ * declaration comes immediately before it (verified against the public
+ * PlantUML server, 2026-07-21) -- so without `pinnedLane`, that's whatever
+ * lane happens to sort last among the hoisted declarations, which is
+ * essentially arbitrary from the user's point of view. When `pinnedLane` is
+ * given (the activity_start block's SWIMLANE field, 02_design.md 14.5), one
+ * more bare `|pinnedLane|` line is appended right after the regular hoisted
+ * block (even if that lane never otherwise appears in the body, which
+ * PlantUML renders as a harmless empty lane -- also verified) so `start`
+ * reliably ends up there. This is a *re-declaration*, not a move: the
+ * pinned lane's position in the initial hoisted block -- which is what
+ * determines its left-to-right column order -- is left untouched, since
+ * re-ordering it instead would silently change the diagram's lane order as
+ * a side effect of pinning `start` (verified this distinction against the
+ * public server too).
  */
-function hoistSwimlaneDeclarations(body: string): string {
-  let declarations = "";
+function hoistSwimlaneDeclarations(body: string, pinnedLane: string | null): string {
+  const order: string[] = [];
   const seen = new Set<string>();
   for (const match of body.matchAll(/^\|([^|\n]+)\|$/gm)) {
     const name = match[1];
     if (seen.has(name)) continue;
     seen.add(name);
-    declarations += `|${name}|\n`;
+    order.push(name);
   }
+  let declarations = order.map((name) => `|${name}|\n`).join("");
+  if (pinnedLane) declarations += `|${pinnedLane}|\n`;
   return declarations;
 }

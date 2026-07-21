@@ -3,15 +3,43 @@ import { defineActivityIfElseToggle } from "./ifElseToggle";
 import { defineActivityForkMutator } from "./forkMutator";
 import { ACTIVITY_STATEMENT } from "./constants";
 
+/**
+ * Scans the workspace for declared swimlanes (deduplicated, in position
+ * order) and returns them as dropdown options for the start block's SWIMLANE
+ * field, plus a leading "(auto)" option (empty string) meaning "no pin --
+ * let activityWorkspaceToCode's default hoist order decide" (02_design.md
+ * 14.5). Unlike participantOptions in sequence/blocks.ts, this never needs a
+ * "none available" placeholder: "(auto)" is always a valid, meaningful
+ * choice on its own.
+ */
+function swimlaneOptions(this: Blockly.FieldDropdown): Blockly.MenuOption[] {
+  const block = this.getSourceBlock();
+  const rawNames = block
+    ? block.workspace.getBlocksByType("activity_swimlane", true).map((b) => b.getFieldValue("NAME") as string)
+    : [];
+  const names = [...new Set(rawNames)];
+  return [["(auto)", ""], ...names.map((name): Blockly.MenuOption => [name, name])];
+}
+
+/**
+ * Same rationale as ParticipantDropdownField in sequence/blocks.ts: without
+ * this override, Blockly's default FieldDropdown validation rejects any
+ * saved SWIMLANE value that isn't in the *current* dynamically-computed
+ * options list (e.g. right after construction, or after the referenced
+ * activity_swimlane block was renamed/deleted), silently wiping the field.
+ * Accepting any string here instead surfaces a stale reference as a
+ * validateActivityWorkspace warning (14.5) rather than losing the value.
+ */
+class SwimlaneDropdownField extends Blockly.FieldDropdown {
+  protected override doClassValidation_(newValue: string): string | null | undefined;
+  protected override doClassValidation_(newValue?: string): string | null;
+  protected override doClassValidation_(newValue?: string): string | null | undefined {
+    return newValue ?? null;
+  }
+}
+
 export function defineActivityBlocks(): void {
   Blockly.defineBlocksWithJsonArray([
-    {
-      type: "activity_start",
-      message0: "start",
-      nextStatement: ACTIVITY_STATEMENT,
-      colour: 120,
-      tooltip: "Diagram entry point.",
-    },
     {
       type: "activity_stop",
       message0: "stop",
@@ -181,6 +209,20 @@ export function defineActivityBlocks(): void {
         "Switch the current swimlane for subsequent statements. Reorder these blocks to control lane display order.",
     },
   ]);
+
+  Blockly.Blocks["activity_start"] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField("start")
+        .appendField("in")
+        .appendField(new SwimlaneDropdownField(swimlaneOptions), "SWIMLANE");
+      this.setNextStatement(true, ACTIVITY_STATEMENT);
+      this.setColour(120);
+      this.setTooltip(
+        "Diagram entry point. Pin a swimlane to control which lane it's drawn in (defaults to automatic).",
+      );
+    },
+  };
 
   defineActivityIfElseToggle();
   defineActivityForkMutator();
