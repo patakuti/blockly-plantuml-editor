@@ -13,6 +13,13 @@ export interface DiagramConfig {
   setUpInitialState?: (workspace: Blockly.WorkspaceSvg) => void;
   /** Run on every non-UI change to refresh block warnings (e.g. FR-SEQ-07/09). */
   onValidate?: (workspace: Blockly.WorkspaceSvg) => void;
+  /**
+   * Opens this diagram type's "Import PlantUML" dialog, if it has one
+   * (01_requirements.md FR-IMPORT-01, 02_design.md 16.5). Absent for diagram
+   * types with no importer; ui/toolbar.ts alerts in that case instead of
+   * hardcoding which diagram keys support import.
+   */
+  openImportDialog?: (workspace: Blockly.WorkspaceSvg) => void;
 }
 
 export interface DiagramInstance extends DiagramConfig {

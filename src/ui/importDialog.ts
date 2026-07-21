@@ -1,15 +1,29 @@
 import type * as Blockly from "blockly/core";
-import { parseActivityPlantUml, PlantUmlImportError } from "../import/activityImportParser";
-import { buildActivityWorkspace } from "../import/activityImportBuilder";
+import { PlantUmlImportError } from "../import/common/noteBlockCursor";
+
+export interface ImportDialogConfig<T> {
+  /** Dialog heading, e.g. "Import PlantUML (Activity Diagram)". */
+  title: string;
+  /** Explanatory text shown under the heading. */
+  hint: string;
+  /** Placeholder text for the paste textarea. */
+  placeholder: string;
+  parse: (source: string) => T[];
+  build: (workspace: Blockly.Workspace, nodes: T[]) => void;
+}
 
 /**
  * Opens a paste-in-text-and-import modal for `workspace` (01_requirements.md
- * FR-IMPORT-01, 02_design.md 15.5). Parsing runs entirely before anything
- * touches `workspace`, so a bad paste just shows an error and leaves the
- * dialog open for another try (FR-IMPORT-04) -- nothing is built until the
- * whole input parses cleanly.
+ * FR-IMPORT-01, 02_design.md 15.5/16.5). Parsing runs entirely before
+ * anything touches `workspace`, so a bad paste just shows an error and
+ * leaves the dialog open for another try (FR-IMPORT-04) -- nothing is built
+ * until the whole input parses cleanly.
+ *
+ * Generic over the diagram's own node type so both the activity and
+ * sequence importers (each with their own parse/build functions and dialog
+ * copy) can share this one modal implementation (02_design.md 16.5).
  */
-export function openImportDialog(workspace: Blockly.WorkspaceSvg): void {
+export function openImportDialog<T>(workspace: Blockly.WorkspaceSvg, config: ImportDialogConfig<T>): void {
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
 
@@ -17,16 +31,15 @@ export function openImportDialog(workspace: Blockly.WorkspaceSvg): void {
   modal.className = "modal";
 
   const heading = document.createElement("h2");
-  heading.textContent = "Import PlantUML (Activity Diagram)";
+  heading.textContent = config.title;
 
   const hint = document.createElement("p");
   hint.className = "modal-hint";
-  hint.textContent =
-    "Paste PlantUML activity-diagram source. Unrecognized lines are kept as Raw PlantUML Line blocks.";
+  hint.textContent = config.hint;
 
   const textarea = document.createElement("textarea");
   textarea.className = "modal-textarea";
-  textarea.placeholder = "@startuml\nstart\n:Do something;\nstop\n@enduml";
+  textarea.placeholder = config.placeholder;
   textarea.rows = 16;
 
   const errorDiv = document.createElement("div");
@@ -64,18 +77,18 @@ export function openImportDialog(workspace: Blockly.WorkspaceSvg): void {
 
   importButton.addEventListener("click", () => {
     errorDiv.textContent = "";
-    let nodes;
+    let nodes: T[];
     try {
-      nodes = parseActivityPlantUml(textarea.value);
+      nodes = config.parse(textarea.value);
     } catch (error) {
       errorDiv.textContent = error instanceof PlantUmlImportError ? error.message : String(error);
       return;
     }
 
     if (workspace.getTopBlocks(false).length > 0) {
-      if (!window.confirm("This will replace the current Activity Diagram. Continue?")) return;
+      if (!window.confirm("This will replace the current diagram. Continue?")) return;
     }
-    buildActivityWorkspace(workspace, nodes);
+    config.build(workspace, nodes);
     close();
   });
 }

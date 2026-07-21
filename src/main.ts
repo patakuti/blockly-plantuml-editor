@@ -23,6 +23,11 @@ import {
 import { createToolbar } from "./ui/toolbar";
 import { createTabs } from "./ui/tabs";
 import { installSplitter } from "./ui/splitter";
+import { openImportDialog } from "./ui/importDialog";
+import { parseActivityPlantUml } from "./import/activityImportParser";
+import { buildActivityWorkspace } from "./import/activityImportBuilder";
+import { parseSequencePlantUml } from "./import/sequenceImportParser";
+import { buildSequenceWorkspace } from "./import/sequenceImportBuilder";
 
 const app = document.getElementById("app")!;
 
@@ -61,6 +66,14 @@ const diagramConfigs: DiagramConfig[] = [
     jsonFilename: "activity-diagram.json",
     plantUmlFilename: "activity-diagram.puml",
     onValidate: validateActivityWorkspace,
+    openImportDialog: (workspace) =>
+      openImportDialog(workspace, {
+        title: "Import PlantUML (Activity Diagram)",
+        hint: "Paste PlantUML activity-diagram source. Unrecognized lines are kept as Raw PlantUML Line blocks.",
+        placeholder: "@startuml\nstart\n:Do something;\nstop\n@enduml",
+        parse: parseActivityPlantUml,
+        build: buildActivityWorkspace,
+      }),
   },
   {
     key: "sequence",
@@ -71,6 +84,14 @@ const diagramConfigs: DiagramConfig[] = [
     jsonFilename: "sequence-diagram.json",
     plantUmlFilename: "sequence-diagram.puml",
     onValidate: validateSequenceWorkspace,
+    openImportDialog: (workspace) =>
+      openImportDialog(workspace, {
+        title: "Import PlantUML (Sequence Diagram)",
+        hint: "Paste PlantUML sequence-diagram source. Unrecognized lines are kept as Raw PlantUML Line blocks.",
+        placeholder: '@startuml\nparticipant "Alice"\nparticipant "Bob"\n"Alice" -> "Bob": Hello\n@enduml',
+        parse: parseSequencePlantUml,
+        build: buildSequenceWorkspace,
+      }),
   },
 ];
 
