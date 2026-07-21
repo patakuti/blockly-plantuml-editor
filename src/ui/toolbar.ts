@@ -1,6 +1,10 @@
 import { exportWorkspaceJson, importWorkspaceJson } from "../workspace/persistence";
 import { getPlantUmlServerBase, setPlantUmlServerBase } from "../preview/plantumlEncoder";
+import { openImportDialog } from "./importDialog";
 import type { DiagramInstance } from "../workspace/workspaceManager";
+
+/** Only the activity diagram has a PlantUML importer (01_requirements.md FR-IMPORT-01: sequence diagrams are out of scope for Round 5). */
+const IMPORT_PLANTUML_SUPPORTED_KEY = "activity";
 
 interface ToolbarOptions {
   /** Resolved on every click so the toolbar always targets the active tab. */
@@ -59,6 +63,17 @@ export function createToolbar(container: HTMLElement, options: ToolbarOptions): 
     options.onPlantUmlServerChanged();
   });
 
-  toolbar.append(saveButton, loadButton, fileInput, undoButton, clearButton, serverButton);
+  const importButton = document.createElement("button");
+  importButton.textContent = "Import PlantUML";
+  importButton.addEventListener("click", () => {
+    const active = options.getActive();
+    if (active.key !== IMPORT_PLANTUML_SUPPORTED_KEY) {
+      window.alert("PlantUML import is currently only supported for the Activity Diagram tab.");
+      return;
+    }
+    openImportDialog(active.workspace);
+  });
+
+  toolbar.append(saveButton, loadButton, fileInput, undoButton, clearButton, serverButton, importButton);
   container.appendChild(toolbar);
 }
