@@ -12,6 +12,11 @@ export function escapeText(text: string): string {
   return text.replace(/@/g, "&#64;");
 }
 
+/** Inverse of {@link escapeText}, used when importing PlantUML text back into block fields. */
+export function unescapeText(text: string): string {
+  return text.replace(/&#64;/g, "@");
+}
+
 /**
  * Escapes a name for embedding inside a double-quoted PlantUML identifier
  * (e.g. `participant "..."`, `"..." -> "...": ...`). Verified against the

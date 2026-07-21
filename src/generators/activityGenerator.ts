@@ -49,6 +49,7 @@ activityGenerator.forBlock["activity_swimlane"] = (block) => {
   const name = escapeText(block.getFieldValue("NAME"));
   return `|${name}|\n`;
 };
+activityGenerator.forBlock["activity_raw_line"] = (block) => `${block.getFieldValue("TEXT")}\n`;
 
 /**
  * Generates full PlantUML source for the activity-diagram workspace.
