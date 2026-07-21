@@ -1,7 +1,7 @@
 import * as Blockly from "blockly/core";
 
 /** Block types + field names that hold a participant name reference (FR-SEQ-07). */
-const REFERENCE_FIELDS: Record<string, string[]> = {
+export const REFERENCE_FIELDS: Record<string, string[]> = {
   sequence_message: ["FROM", "TO"],
   sequence_note: ["TARGET"],
 };

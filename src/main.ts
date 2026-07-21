@@ -11,6 +11,7 @@ import { defineSequenceBlocks } from "./blocks/sequence/blocks";
 import { sequenceToolbox } from "./blocks/sequence/toolbox";
 import { sequenceGenerator, sequenceWorkspaceToCode } from "./generators/sequenceGenerator";
 import { validateSequenceWorkspace } from "./blocks/sequence/validation";
+import { syncParticipantRename } from "./blocks/sequence/renameSync";
 import { getBlockOwnCode } from "./generators/common/blockSnippet";
 import { PreviewPanel } from "./preview/previewPanel";
 import { saveToLocalStorage } from "./workspace/persistence";
@@ -84,6 +85,7 @@ const diagramConfigs: DiagramConfig[] = [
     jsonFilename: "sequence-diagram.json",
     plantUmlFilename: "sequence-diagram.puml",
     onValidate: validateSequenceWorkspace,
+    onFieldChange: syncParticipantRename,
     openImportDialog: (workspace) =>
       openImportDialog(workspace, {
         title: "Import PlantUML (Sequence Diagram)",
@@ -118,6 +120,9 @@ for (const instance of instances) {
       return;
     }
     if (event.isUiEvent) return;
+    if (event instanceof Blockly.Events.BlockChange && event.element === "field") {
+      instance.onFieldChange?.(instance.workspace, event);
+    }
     saveToLocalStorage(instance.key, instance.workspace);
     instance.onValidate?.(instance.workspace);
     if (instance.key === activeKey) updatePreview();

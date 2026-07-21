@@ -13,6 +13,8 @@ export interface DiagramConfig {
   setUpInitialState?: (workspace: Blockly.WorkspaceSvg) => void;
   /** Run on every non-UI change to refresh block warnings (e.g. FR-SEQ-07/09). */
   onValidate?: (workspace: Blockly.WorkspaceSvg) => void;
+  /** Run on every field-value change, before onValidate (Round 7: FR-SEQ-13/FR-ACT-13 rename sync). */
+  onFieldChange?: (workspace: Blockly.Workspace, event: Blockly.Events.BlockChange) => void;
   /**
    * Opens this diagram type's "Import PlantUML" dialog, if it has one
    * (01_requirements.md FR-IMPORT-01, 02_design.md 16.5). Absent for diagram
