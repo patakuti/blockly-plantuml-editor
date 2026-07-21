@@ -36,7 +36,10 @@ export function createDiagramInstances(
     container.style.display = "none";
     host.appendChild(container);
 
-    const workspace = Blockly.inject(container, { toolbox: config.toolbox });
+    // `comments: true` is required for Blockly's "Add Comment" context menu item
+    // and comment bubble UI to appear at all (default is disabled). Needed for
+    // the Note-attachment feature (01_requirements.md FR-COM-05/FR-COM-12).
+    const workspace = Blockly.inject(container, { toolbox: config.toolbox, comments: true });
     const restored = loadFromLocalStorage(config.key, workspace);
     if (!restored) {
       config.setUpInitialState?.(workspace);

@@ -28,5 +28,13 @@ export const activityToolbox: Blockly.utils.toolbox.ToolboxInfo = {
       kind: "block",
       type: "activity_fork",
     },
+    {
+      kind: "block",
+      type: "activity_partition",
+    },
+    {
+      kind: "block",
+      type: "activity_swimlane",
+    },
   ],
 };

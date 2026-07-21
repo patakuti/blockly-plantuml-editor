@@ -141,6 +141,45 @@ export function defineActivityBlocks(): void {
       tooltip: "Split into parallel branches. Use the gear icon to add/remove branches.",
       mutator: "activity_fork_mutator",
     },
+    {
+      type: "activity_partition",
+      message0: "partition %1",
+      args0: [
+        {
+          type: "field_input",
+          name: "NAME",
+          text: "partition",
+        },
+      ],
+      message1: "%1",
+      args1: [
+        {
+          type: "input_statement",
+          name: "DO",
+          check: ACTIVITY_STATEMENT,
+        },
+      ],
+      previousStatement: ACTIVITY_STATEMENT,
+      nextStatement: ACTIVITY_STATEMENT,
+      colour: 210,
+      tooltip: "Group a sequence of statements under a named partition. Can be nested.",
+    },
+    {
+      type: "activity_swimlane",
+      message0: "swimlane %1",
+      args0: [
+        {
+          type: "field_input",
+          name: "NAME",
+          text: "lane",
+        },
+      ],
+      previousStatement: ACTIVITY_STATEMENT,
+      nextStatement: ACTIVITY_STATEMENT,
+      colour: 210,
+      tooltip:
+        "Switch the current swimlane for subsequent statements. Reorder these blocks to control lane display order.",
+    },
   ]);
 
   defineActivityIfElseToggle();

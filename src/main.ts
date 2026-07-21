@@ -2,6 +2,7 @@ import * as Blockly from "blockly/core";
 import * as En from "blockly/msg/en";
 import "./style.css";
 import { installUnifiedBlockRangeOverrides } from "./blocks/common/blockRangeOverrides";
+import { installNoteDirectionMenu } from "./blocks/common/noteDirectionMenu";
 import { defineActivityBlocks } from "./blocks/activity/blocks";
 import { activityToolbox } from "./blocks/activity/toolbox";
 import { setUpFixedStartStop, enforceFixedStartStopInvariants } from "./blocks/activity/fixedStartStop";
@@ -48,6 +49,7 @@ Blockly.setLocale(En as unknown as Record<string, string>);
 defineActivityBlocks();
 defineSequenceBlocks();
 installUnifiedBlockRangeOverrides();
+installNoteDirectionMenu();
 
 const diagramConfigs: DiagramConfig[] = [
   {
