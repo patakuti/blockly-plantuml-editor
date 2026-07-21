@@ -40,6 +40,11 @@ activityGenerator.forBlock["activity_fork"] = (block, generator) => {
   }
   return `fork\n${branches.join("fork again\n")}end fork\n`;
 };
+activityGenerator.forBlock["activity_partition"] = (block, generator) => {
+  const name = escapeText(block.getFieldValue("NAME"));
+  const body = generateStatements(generator, block.getInputTargetBlock("DO"));
+  return `partition ${name} {\n${body}}\n`;
+};
 
 /**
  * Generates full PlantUML source for the activity-diagram workspace.

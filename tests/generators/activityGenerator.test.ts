@@ -271,4 +271,57 @@ describe("activityWorkspaceToCode", () => {
         "end fork\nstop\n@enduml\n",
     );
   });
+
+  it("generates a partition wrapping its statements", () => {
+    const start = workspace.newBlock("activity_start");
+    const partition = workspace.newBlock("activity_partition");
+    partition.setFieldValue("Team Alpha", "NAME");
+    const action = workspace.newBlock("activity_action");
+    action.setFieldValue("Do something", "TEXT");
+    partition.getInput("DO")!.connection!.connect(action.previousConnection!);
+    const stop = workspace.newBlock("activity_stop");
+    connectChain(start, partition, stop);
+
+    expect(activityWorkspaceToCode(workspace)).toBe(
+      "@startuml\nstart\npartition Team Alpha {\n:Do something;\n}\nstop\n@enduml\n",
+    );
+  });
+
+  it("generates nested partitions", () => {
+    const start = workspace.newBlock("activity_start");
+    const outer = workspace.newBlock("activity_partition");
+    outer.setFieldValue("Outer", "NAME");
+    const inner = workspace.newBlock("activity_partition");
+    inner.setFieldValue("Inner", "NAME");
+    const action = workspace.newBlock("activity_action");
+    action.setFieldValue("Do something", "TEXT");
+    inner.getInput("DO")!.connection!.connect(action.previousConnection!);
+    outer.getInput("DO")!.connection!.connect(inner.previousConnection!);
+    const stop = workspace.newBlock("activity_stop");
+    connectChain(start, outer, stop);
+
+    expect(activityWorkspaceToCode(workspace)).toBe(
+      "@startuml\nstart\npartition Outer {\npartition Inner {\n:Do something;\n}\n}\nstop\n@enduml\n",
+    );
+  });
+
+  it("generates an if block nested inside a partition", () => {
+    const start = workspace.newBlock("activity_start");
+    const partition = workspace.newBlock("activity_partition");
+    partition.setFieldValue("Team Alpha", "NAME");
+    const ifBlock = workspace.newBlock("activity_if");
+    ifBlock.setFieldValue("x > 0", "COND");
+    const thenAction = workspace.newBlock("activity_action");
+    thenAction.setFieldValue("Then branch", "TEXT");
+    ifBlock.getInput("DO0")!.connection!.connect(thenAction.previousConnection!);
+    partition.getInput("DO")!.connection!.connect(ifBlock.previousConnection!);
+    const stop = workspace.newBlock("activity_stop");
+    connectChain(start, partition, stop);
+
+    expect(activityWorkspaceToCode(workspace)).toBe(
+      "@startuml\nstart\npartition Team Alpha {\n" +
+        "if (x > 0) then (yes)\n:Then branch;\nendif\n" +
+        "}\nstop\n@enduml\n",
+    );
+  });
 });
