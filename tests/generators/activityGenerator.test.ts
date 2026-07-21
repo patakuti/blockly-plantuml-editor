@@ -80,6 +80,20 @@ describe("activityWorkspaceToCode", () => {
     );
   });
 
+  it("wraps a block comment as a left-facing PlantUML note when block.data is \"left\"", () => {
+    const start = workspace.newBlock("activity_start");
+    const action = workspace.newBlock("activity_action");
+    action.setFieldValue("Do something", "TEXT");
+    action.setCommentText("a helpful note");
+    action.data = "left";
+    const stop = workspace.newBlock("activity_stop");
+    connectChain(start, action, stop);
+
+    expect(activityWorkspaceToCode(workspace)).toBe(
+      "@startuml\nstart\n:Do something;\nnote left\na helpful note\nend note\nstop\n@enduml\n",
+    );
+  });
+
   it("skips disabled blocks", () => {
     const start = workspace.newBlock("activity_start");
     const action = workspace.newBlock("activity_action");
