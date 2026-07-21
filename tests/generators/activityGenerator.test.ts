@@ -105,8 +105,57 @@ describe("activityWorkspaceToCode", () => {
     expect(activityWorkspaceToCode(workspace)).toBe("@startuml\nstart\nstop\n@enduml\n");
   });
 
-  it("returns an empty shell when there is no start block", () => {
+  it("returns an empty shell for an empty workspace", () => {
     expect(activityWorkspaceToCode(workspace)).toBe("@startuml\n@enduml\n");
+  });
+
+  it("generates a chain with no start or stop block (FR-ACT-01: both optional)", () => {
+    const action = workspace.newBlock("activity_action");
+    action.setFieldValue("Do something", "TEXT");
+
+    expect(activityWorkspaceToCode(workspace)).toBe("@startuml\n:Do something;\n@enduml\n");
+  });
+
+  it("generates multiple stop blocks reached from different if branches", () => {
+    const start = workspace.newBlock("activity_start");
+    const ifBlock = workspace.newBlock("activity_if");
+    ifBlock.setFieldValue("x > 0", "COND");
+    ifBlock.loadExtraState!({ elseCount: 1 });
+    const thenStop = workspace.newBlock("activity_stop");
+    ifBlock.getInput("DO0")!.connection!.connect(thenStop.previousConnection!);
+    const elseStop = workspace.newBlock("activity_stop");
+    ifBlock.getInput("ELSE")!.connection!.connect(elseStop.previousConnection!);
+    connectChain(start, ifBlock);
+
+    expect(activityWorkspaceToCode(workspace)).toBe(
+      "@startuml\nstart\nif (x > 0) then (yes)\nstop\nelse (no)\nstop\nendif\n@enduml\n",
+    );
+  });
+
+  it("prefers the chain containing start over other disconnected chains, regardless of position", () => {
+    const orphan = workspace.newBlock("activity_action");
+    orphan.setFieldValue("orphan", "TEXT");
+    orphan.moveBy(0, 0);
+
+    const start = workspace.newBlock("activity_start");
+    start.moveBy(0, 100);
+    const action = workspace.newBlock("activity_action");
+    action.setFieldValue("main", "TEXT");
+    connectChain(start, action);
+
+    expect(activityWorkspaceToCode(workspace)).toBe("@startuml\nstart\n:main;\n@enduml\n");
+  });
+
+  it("falls back to the position-ordered first chain when no start block exists", () => {
+    const second = workspace.newBlock("activity_action");
+    second.setFieldValue("second", "TEXT");
+    second.moveBy(0, 100);
+
+    const first = workspace.newBlock("activity_action");
+    first.setFieldValue("first", "TEXT");
+    first.moveBy(0, 0);
+
+    expect(activityWorkspaceToCode(workspace)).toBe("@startuml\n:first;\n@enduml\n");
   });
 
   it("generates an if without an else branch by default", () => {
@@ -395,5 +444,66 @@ describe("activityWorkspaceToCode", () => {
     expect(activityWorkspaceToCode(workspace)).toBe(
       "@startuml\n|A|\n|B|\nstart\n|A|\n:a1;\n|B|\n:b1;\n|A|\n:a2;\nstop\n@enduml\n",
     );
+  });
+
+  it("without a pinned swimlane, start ends up in whichever lane sorts last (the bug the SWIMLANE field fixes)", () => {
+    const start = workspace.newBlock("activity_start");
+    const laneA = workspace.newBlock("activity_swimlane");
+    laneA.setFieldValue("A", "NAME");
+    const actionA = workspace.newBlock("activity_action");
+    actionA.setFieldValue("a1", "TEXT");
+    const laneB = workspace.newBlock("activity_swimlane");
+    laneB.setFieldValue("B", "NAME");
+    const actionB = workspace.newBlock("activity_action");
+    actionB.setFieldValue("b1", "TEXT");
+    connectChain(start, laneA, actionA, laneB, actionB);
+
+    expect(activityWorkspaceToCode(workspace)).toBe(
+      "@startuml\n|A|\n|B|\nstart\n|A|\n:a1;\n|B|\n:b1;\n@enduml\n",
+    );
+  });
+
+  it("pins start to the SWIMLANE field's lane via a re-declaration, without disturbing column order, verified against the public PlantUML server (2026-07-21)", () => {
+    const start = workspace.newBlock("activity_start");
+    start.setFieldValue("A", "SWIMLANE");
+    const laneA = workspace.newBlock("activity_swimlane");
+    laneA.setFieldValue("A", "NAME");
+    const actionA = workspace.newBlock("activity_action");
+    actionA.setFieldValue("a1", "TEXT");
+    const laneB = workspace.newBlock("activity_swimlane");
+    laneB.setFieldValue("B", "NAME");
+    const actionB = workspace.newBlock("activity_action");
+    actionB.setFieldValue("b1", "TEXT");
+    connectChain(start, laneA, actionA, laneB, actionB);
+
+    expect(activityWorkspaceToCode(workspace)).toBe(
+      "@startuml\n|A|\n|B|\n|A|\nstart\n|A|\n:a1;\n|B|\n:b1;\n@enduml\n",
+    );
+  });
+
+  it("hoists a pinned swimlane even when it's never otherwise used in the body", () => {
+    const start = workspace.newBlock("activity_start");
+    start.setFieldValue("Kickoff", "SWIMLANE");
+    const laneB = workspace.newBlock("activity_swimlane");
+    laneB.setFieldValue("B", "NAME");
+    const actionB = workspace.newBlock("activity_action");
+    actionB.setFieldValue("b1", "TEXT");
+    connectChain(start, laneB, actionB);
+
+    expect(activityWorkspaceToCode(workspace)).toBe(
+      "@startuml\n|B|\n|Kickoff|\nstart\n|B|\n:b1;\n@enduml\n",
+    );
+  });
+
+  it("honors only the position-ordered first start block's SWIMLANE pin when start is duplicated", () => {
+    const secondStart = workspace.newBlock("activity_start");
+    secondStart.setFieldValue("B", "SWIMLANE");
+    secondStart.moveBy(0, 100);
+
+    const firstStart = workspace.newBlock("activity_start");
+    firstStart.setFieldValue("A", "SWIMLANE");
+    firstStart.moveBy(0, 0);
+
+    expect(activityWorkspaceToCode(workspace)).toBe("@startuml\n|A|\nstart\n@enduml\n");
   });
 });

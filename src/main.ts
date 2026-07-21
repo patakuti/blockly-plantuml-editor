@@ -5,7 +5,7 @@ import { installUnifiedBlockRangeOverrides } from "./blocks/common/blockRangeOve
 import { installNoteDirectionMenu } from "./blocks/common/noteDirectionMenu";
 import { defineActivityBlocks } from "./blocks/activity/blocks";
 import { activityToolbox } from "./blocks/activity/toolbox";
-import { setUpFixedStartStop, enforceFixedStartStopInvariants } from "./blocks/activity/fixedStartStop";
+import { validateActivityWorkspace } from "./blocks/activity/validation";
 import { activityGenerator, activityWorkspaceToCode } from "./generators/activityGenerator";
 import { defineSequenceBlocks } from "./blocks/sequence/blocks";
 import { sequenceToolbox } from "./blocks/sequence/toolbox";
@@ -60,8 +60,7 @@ const diagramConfigs: DiagramConfig[] = [
     generator: activityGenerator,
     jsonFilename: "activity-diagram.json",
     plantUmlFilename: "activity-diagram.puml",
-    setUpInitialState: setUpFixedStartStop,
-    onValidate: enforceFixedStartStopInvariants,
+    onValidate: validateActivityWorkspace,
   },
   {
     key: "sequence",
