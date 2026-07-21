@@ -6,6 +6,7 @@ import { installNoteDirectionMenu } from "./blocks/common/noteDirectionMenu";
 import { defineActivityBlocks } from "./blocks/activity/blocks";
 import { activityToolbox } from "./blocks/activity/toolbox";
 import { validateActivityWorkspace } from "./blocks/activity/validation";
+import { syncSwimlaneRename } from "./blocks/activity/renameSync";
 import { activityGenerator, activityWorkspaceToCode } from "./generators/activityGenerator";
 import { defineSequenceBlocks } from "./blocks/sequence/blocks";
 import { sequenceToolbox } from "./blocks/sequence/toolbox";
@@ -67,6 +68,7 @@ const diagramConfigs: DiagramConfig[] = [
     jsonFilename: "activity-diagram.json",
     plantUmlFilename: "activity-diagram.puml",
     onValidate: validateActivityWorkspace,
+    onFieldChange: syncSwimlaneRename,
     openImportDialog: (workspace) =>
       openImportDialog(workspace, {
         title: "Import PlantUML (Activity Diagram)",
