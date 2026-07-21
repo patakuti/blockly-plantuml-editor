@@ -127,6 +127,23 @@ export function defineSequenceBlocks(): void {
       colour: 210,
       tooltip: "Repeats its contents while the condition holds.",
     },
+    {
+      type: "sequence_raw_line",
+      message0: "raw %1",
+      args0: [
+        {
+          type: "field_input",
+          name: "TEXT",
+          text: "'",
+        },
+      ],
+      previousStatement: SEQUENCE_STATEMENT,
+      nextStatement: SEQUENCE_STATEMENT,
+      colour: 330,
+      tooltip:
+        "Emits its text as a single line of PlantUML, verbatim and unescaped. " +
+        "Use it for syntax this app doesn't have a block for, or as a placeholder for lines an import couldn't recognize.",
+    },
   ]);
 
   defineSequenceAltMutator();

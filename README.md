@@ -5,8 +5,8 @@ A no-code editor for PlantUML **activity diagrams** and **sequence diagrams**, b
 ## Features
 
 - **Activity diagrams**: Start/Stop (optional, like plain PlantUML — see below), Action, If/Then/Else, While, Repeat, Fork, Partition, Swimlane, Raw PlantUML Line — If/Then/Else has an else-branch checkbox with editable then/else labels, Fork has a mutator for variable branch counts, Partition groups a sequence of statements (nestable), Swimlane switches the current lane for subsequent statements (reorder by dragging to control lane order), Raw PlantUML Line emits its text as a single line of PlantUML verbatim (unescaped) for syntax this app has no dedicated block for.
-- **PlantUML import (activity diagrams only)**: the "Import PlantUML" toolbar button opens a paste-in dialog that parses PlantUML activity-diagram source back into blocks. It only recognizes the syntax subset this app's own generator produces (see "Known limitations" below); anything else becomes a Raw PlantUML Line block instead of being dropped. A structurally broken paste (e.g. a missing `endif`) shows an error in the dialog and leaves the workspace untouched.
-- **Sequence diagrams**: Participant, Message, Alt/Opt/Loop, Note — with dynamic dropdowns that track declared participants, a mutator for optional else branches on Alt, and Participant blocks that chain together so they can be reordered by dragging.
+- **PlantUML import (both diagram types)**: the "Import PlantUML" toolbar button opens a paste-in dialog (per diagram type) that parses PlantUML source back into blocks. It only recognizes the syntax subset that diagram type's own generator produces (see "Known limitations" below); anything else becomes a Raw PlantUML Line block instead of being dropped. A structurally broken paste (e.g. a missing `endif`/`end`) shows an error in the dialog and leaves the workspace untouched. A pasted-in ` ```plantuml ` Markdown code fence (e.g. from "Copy as Markdown") is recognized and stripped automatically.
+- **Sequence diagrams**: Participant, Message, Alt/Opt/Loop, Note, Raw PlantUML Line — with dynamic dropdowns that track declared participants, a mutator for optional else branches on Alt, and Participant blocks that chain together so they can be reordered by dragging.
 - **Notes on any block**: right-click a block and "Add Comment" to attach freeform text; it's rendered as a PlantUML `note` right after that block's own output. A "Note direction" right-click item (shown only on commented blocks) toggles the note between `right` (default) and `left`.
 - **Live preview**: generated PlantUML is rendered via a PlantUML server (public by default, configurable — see below), debounced so dragging blocks doesn't spam requests. The editor/preview split is resizable by dragging the handle between them.
 - **Source highlighting**: selecting a block highlights the PlantUML source text it generated, since the rendered SVG has no per-element mapping back to blocks.
@@ -47,7 +47,7 @@ src/
     common/      # shared statement-walking, note-wrapping, escaping/unescaping helpers
     activityGenerator.ts
     sequenceGenerator.ts
-  import/        # PlantUML activity-diagram text -> blocks: parser + workspace builder
+  import/        # PlantUML text -> blocks: per-diagram-type parser + workspace builder, plus shared line-cursor/preprocessing helpers
   preview/       # PlantUML server URL + hex-encoding, and the preview/source panel
   workspace/     # per-diagram Blockly workspace lifecycle, localStorage/JSON/file persistence
   ui/            # tab bar, toolbar (Save/Load JSON, Undo, Clear, server setting, Import PlantUML), splitter, import dialog
@@ -55,7 +55,7 @@ src/
   main.ts        # wires everything together
 tests/
   generators/    # unit tests for the code generators, run against headless Blockly workspaces
-  import/        # unit tests for the PlantUML import parser and a parse-build-regenerate round trip
+  import/        # unit tests for both diagram types' PlantUML import parsers and their parse-build-regenerate round trips
 ```
 
 ## Testing
@@ -86,6 +86,7 @@ Which lane `start` itself is drawn in is determined by whichever `|Name|` declar
 - If the activity workspace has more than one disconnected block chain, only one is rendered: the chain containing the Start block if one exists, otherwise the top-most/left-most chain by position. The other chains are silently excluded from the generated PlantUML — there's no warning for this case, since a stray chain may just be a work-in-progress fragment.
 - Sequence diagram participants declare in the order they're chained together (reorder by dragging); a participant left disconnected from that chain still appears, ordered by its Y-position in the workspace.
 - The message/statement chain generator only follows a single chain from its anchor block; additional disconnected chains elsewhere in the workspace are not included in the generated output.
-- PlantUML import only supports activity diagrams (see above); sequence diagrams have no importer.
-- The import parser only recognizes the syntax subset this app's own generator produces, not PlantUML's full grammar. Conditions/labels containing literal `)` or `{` may not parse correctly, since the parser locates them with the first matching delimiter (the same free-text limitation the escaping already accepts). Everything else unrecognized becomes a Raw PlantUML Line block rather than being interpreted or dropped.
+- Each diagram type's import parser only recognizes the syntax subset that diagram type's own generator produces, not PlantUML's full grammar. Conditions/labels containing literal `)` or `{` may not parse correctly, since the parser locates them with the first matching delimiter (the same free-text limitation the escaping already accepts). Everything else unrecognized becomes a Raw PlantUML Line block rather than being interpreted or dropped. Pasting into the wrong diagram type's dialog (e.g. sequence-diagram source into the Activity tab's importer) parses as entirely unrecognized text — every line becomes a Raw PlantUML Line block, which still regenerates byte-identical PlantUML (and so still previews correctly), even though none of it became real blocks.
 - Import doesn't reconstruct a Start block's pinned swimlane (the "in" dropdown) — an imported Start always comes back as "(auto)", since the pin can't be distinguished from PlantUML's own required lane hoisting once generated.
+- Sequence diagram import splits the pasted text into two groups by node kind: all `participant` declarations rebuild the participant chain, everything else (messages, alt/opt/loop, notes, unrecognized raw lines) rebuilds the message chain — each group keeping its own relative order. A raw line that appeared between participant declarations in the original text is therefore always moved into the message-chain group on import.
+- `escapeQuotedName` (used for participant names and message/note endpoints) replaces `"` with `'` and can't be reversed, so a name containing a literal `"` won't round-trip through export and re-import unchanged.

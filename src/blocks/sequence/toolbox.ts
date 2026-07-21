@@ -27,5 +27,9 @@ export const sequenceToolbox: Blockly.utils.toolbox.ToolboxInfo = {
       kind: "block",
       type: "sequence_note",
     },
+    {
+      kind: "block",
+      type: "sequence_raw_line",
+    },
   ],
 };

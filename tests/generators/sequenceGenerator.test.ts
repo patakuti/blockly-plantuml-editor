@@ -248,6 +248,13 @@ describe("sequenceWorkspaceToCode", () => {
     );
   });
 
+  it("generates a raw line verbatim and unescaped", () => {
+    const raw = workspace.newBlock("sequence_raw_line");
+    raw.setFieldValue("autonumber @enduml", "TEXT");
+
+    expect(sequenceWorkspaceToCode(workspace)).toBe("@startuml\nautonumber @enduml\n@enduml\n");
+  });
+
   it("generates nested containers (alt branch containing a loop containing a message)", () => {
     const alice = workspace.newBlock("sequence_participant");
     alice.setFieldValue("Alice", "NAME");
