@@ -42,6 +42,7 @@ sequenceGenerator.forBlock["sequence_note"] = (block) => {
   const text = escapeText(block.getFieldValue("TEXT"));
   return `note ${side} of "${target}": ${text}\n`;
 };
+sequenceGenerator.forBlock["sequence_raw_line"] = (block) => `${block.getFieldValue("TEXT")}\n`;
 
 /**
  * Generates full PlantUML source for the sequence-diagram workspace.

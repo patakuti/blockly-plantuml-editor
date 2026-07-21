@@ -1,4 +1,13 @@
 import { unescapeText } from "../generators/common/escape";
+import {
+  LineCursor,
+  PlantUmlImportError,
+  matchNoteOpen,
+  parseNoteBlock,
+  preprocessPlantUmlSource,
+  type ImportedComment,
+  type NoteDirection,
+} from "./common/noteBlockCursor";
 
 /**
  * Parses PlantUML activity-diagram text back into an intermediate tree
@@ -9,12 +18,7 @@ import { unescapeText } from "../generators/common/escape";
  * dropped, so nothing silently disappears on import.
  */
 
-export type NoteDirection = "left" | "right";
-
-export interface ImportedComment {
-  text: string;
-  direction: NoteDirection;
-}
+export type { NoteDirection, ImportedComment };
 
 export type ImportedNode =
   | { kind: "start"; comment?: ImportedComment }
@@ -36,8 +40,7 @@ export type ImportedNode =
   | { kind: "swimlane"; name: string; comment?: ImportedComment }
   | { kind: "raw"; text: string; comment?: ImportedComment };
 
-/** Thrown when the input's nesting can't be resolved (e.g. an `if` with no matching `endif`). Import is aborted wholesale on this (FR-IMPORT-04); nothing partial is built. */
-export class PlantUmlImportError extends Error {}
+export { PlantUmlImportError };
 
 const START = /^start$/i;
 const STOP = /^stop$/i;
@@ -55,40 +58,6 @@ const END_FORK = /^end fork$/i;
 const PARTITION = /^partition\s+(.+?)\s*\{$/i;
 const PARTITION_END = /^\}$/;
 const SWIMLANE = /^\|([^|]+)\|$/;
-const NOTE_OPEN = /^note\s+(right|left)$/i;
-const NOTE_END = /^end note$/i;
-
-/** Strips one leading `@startuml...` line and one trailing `@enduml` line, if present. Everything else (including blank lines) is left untouched for parseStatements to walk. */
-function preprocess(source: string): string[] {
-  const lines = source.split(/\r\n|\r|\n/);
-  let start = 0;
-  let end = lines.length;
-  while (start < end && lines[start].trim() === "") start++;
-  if (start < end && /^@startuml\b/i.test(lines[start].trim())) start++;
-  while (end > start && lines[end - 1].trim() === "") end--;
-  if (end > start && /^@enduml$/i.test(lines[end - 1].trim())) end--;
-  return lines.slice(start, end);
-}
-
-class LineCursor {
-  private index = 0;
-  constructor(private readonly lines: string[]) {}
-  hasMore(): boolean {
-    return this.index < this.lines.length;
-  }
-  peekTrimmed(): string {
-    return this.lines[this.index].trim();
-  }
-  consumeTrimmed(): string {
-    return this.lines[this.index++].trim();
-  }
-}
-
-function attachCommentIfPossible(node: ImportedNode, comment: ImportedComment): boolean {
-  if (node.comment) return false;
-  node.comment = comment;
-  return true;
-}
 
 /**
  * Consumes lines until `isTerminator` matches the next line (which is left
@@ -114,34 +83,13 @@ function parseStatements(
       continue;
     }
 
-    const noteMatch = NOTE_OPEN.exec(trimmed);
-    if (noteMatch) {
-      parseNote(cursor, noteMatch[1].toLowerCase() as NoteDirection, nodes);
+    const noteDirection = matchNoteOpen(trimmed);
+    if (noteDirection) {
+      parseNoteBlock(cursor, noteDirection, nodes, (text): ImportedNode => ({ kind: "raw", text }));
       continue;
     }
 
     nodes.push(parseOneStatement(cursor));
-  }
-}
-
-/** Handles a `note right`/`note left` ... `end note` block, attaching it to the previously parsed node or falling back to raw lines (FR-IMPORT-06). */
-function parseNote(cursor: LineCursor, direction: NoteDirection, nodes: ImportedNode[]): void {
-  const openLine = cursor.consumeTrimmed();
-  const contentLines: string[] = [];
-  while (cursor.hasMore() && !NOTE_END.test(cursor.peekTrimmed())) {
-    contentLines.push(cursor.consumeTrimmed());
-  }
-  if (!cursor.hasMore()) {
-    throw new PlantUmlImportError(`Missing "end note" for "${openLine}".`);
-  }
-  const endLine = cursor.consumeTrimmed();
-
-  const target = nodes[nodes.length - 1];
-  const attached = target && attachCommentIfPossible(target, { text: contentLines.join("\n"), direction });
-  if (!attached) {
-    nodes.push({ kind: "raw", text: openLine });
-    for (const line of contentLines) nodes.push({ kind: "raw", text: line });
-    nodes.push({ kind: "raw", text: endLine });
   }
 }
 
@@ -255,6 +203,6 @@ function parseOneStatement(cursor: LineCursor): ImportedNode {
 }
 
 export function parseActivityPlantUml(source: string): ImportedNode[] {
-  const cursor = new LineCursor(preprocess(source));
+  const cursor = new LineCursor(preprocessPlantUmlSource(source));
   return parseStatements(cursor, () => false);
 }

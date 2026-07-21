@@ -11,6 +11,20 @@ describe("parseActivityPlantUml", () => {
     ]);
   });
 
+  it("ignores a wrapping ```plantuml Markdown code fence", () => {
+    const source = "```plantuml\n@startuml\nstart\n:Do something;\nstop\n@enduml\n```\n";
+    expect(parseActivityPlantUml(source)).toEqual([
+      { kind: "start" },
+      { kind: "action", text: "Do something" },
+      { kind: "stop" },
+    ]);
+  });
+
+  it("ignores a wrapping bare ``` Markdown code fence", () => {
+    const source = "```\nstart\nstop\n```";
+    expect(parseActivityPlantUml(source)).toEqual([{ kind: "start" }, { kind: "stop" }]);
+  });
+
   it("unescapes &#64; back to @ in action text", () => {
     const source = ":Escape &#64;enduml here;";
     expect(parseActivityPlantUml(source)).toEqual([{ kind: "action", text: "Escape @enduml here" }]);
