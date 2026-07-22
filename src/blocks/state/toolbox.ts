@@ -13,6 +13,10 @@ export const stateToolbox: Blockly.utils.toolbox.ToolboxInfo = {
     },
     {
       kind: "block",
+      type: "state_choice",
+    },
+    {
+      kind: "block",
       type: "state_composite",
     },
     {

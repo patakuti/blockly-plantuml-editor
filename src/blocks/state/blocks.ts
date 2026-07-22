@@ -1,14 +1,15 @@
 import * as Blockly from "blockly/core";
 import { STATE_STATEMENT } from "./constants";
+import { defineStateRegionMutator } from "./regionMutator";
 
 /** The pseudostate token for the start/end of a state diagram (or of a composite state's own region). */
 const PSEUDOSTATE = "[*]";
 
 /**
- * Scans the workspace for declared states (both plain state_state and
- * state_composite, which can also be a transition endpoint) plus the
+ * Scans the workspace for declared states (state_state, state_composite,
+ * and state_choice -- all of which can be a transition endpoint) plus the
  * pseudostate marker, and returns them as dropdown options for Transition's
- * "from"/"to" fields (02_design.md 18.3).
+ * "from"/"to" fields (02_design.md 18.3, extended for choice in 22.2).
  */
 function stateOptions(this: Blockly.FieldDropdown): Blockly.MenuOption[] {
   const block = this.getSourceBlock();
@@ -16,6 +17,7 @@ function stateOptions(this: Blockly.FieldDropdown): Blockly.MenuOption[] {
     ? [
         ...block.workspace.getBlocksByType("state_state", true),
         ...block.workspace.getBlocksByType("state_composite", true),
+        ...block.workspace.getBlocksByType("state_choice", true),
       ].map((b) => b.getFieldValue("NAME") as string)
     : [];
   const options: Blockly.MenuOption[] = [[PSEUDOSTATE, PSEUDOSTATE]];
@@ -39,6 +41,8 @@ class StateDropdownField extends Blockly.FieldDropdown {
 }
 
 export function defineStateBlocks(): void {
+  defineStateRegionMutator();
+
   Blockly.defineBlocksWithJsonArray([
     {
       type: "state_state",
@@ -54,6 +58,21 @@ export function defineStateBlocks(): void {
       nextStatement: STATE_STATEMENT,
       colour: 160,
       tooltip: "Declares a state.",
+    },
+    {
+      type: "state_choice",
+      message0: "choice %1",
+      args0: [
+        {
+          type: "field_input",
+          name: "NAME",
+          text: "Choice1",
+        },
+      ],
+      previousStatement: STATE_STATEMENT,
+      nextStatement: STATE_STATEMENT,
+      colour: 160,
+      tooltip: "Declares a choice pseudostate (a branch point). Connect transitions in and out just like a regular state.",
     },
     {
       type: "state_composite",
@@ -76,7 +95,10 @@ export function defineStateBlocks(): void {
       previousStatement: STATE_STATEMENT,
       nextStatement: STATE_STATEMENT,
       colour: 290,
-      tooltip: "Groups a sequence of states/transitions as a nested (composite) state. Nestable.",
+      tooltip:
+        "Groups a sequence of states/transitions as a nested (composite) state. Nestable. " +
+        "Use the gear icon to add concurrent regions (separated by \"--\").",
+      mutator: "state_region_mutator",
     },
     {
       type: "state_raw_line",

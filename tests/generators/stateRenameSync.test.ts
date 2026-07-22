@@ -59,6 +59,21 @@ describe("syncStateRename (FR-STATE-07)", () => {
     expect(transition.getField("TO")!.getText()).toBe("CompositeA");
   });
 
+  it("updates Transition FROM/TO when the referenced choice is renamed", async () => {
+    const choice = workspace.newBlock("state_choice");
+    choice.setFieldValue("Choice1", "NAME");
+
+    const transition = workspace.newBlock("state_transition");
+    transition.setFieldValue("[*]", "FROM");
+    transition.setFieldValue("Choice1", "TO");
+
+    choice.setFieldValue("ChoiceA", "NAME");
+    await flushEvents();
+
+    expect(transition.getFieldValue("TO")).toBe("ChoiceA");
+    expect(transition.getField("TO")!.getText()).toBe("ChoiceA");
+  });
+
   it("does not touch references to a different state or the pseudostate", async () => {
     const stateA = workspace.newBlock("state_state");
     stateA.setFieldValue("StateA", "NAME");
