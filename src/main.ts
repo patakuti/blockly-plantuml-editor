@@ -13,6 +13,11 @@ import { sequenceToolbox } from "./blocks/sequence/toolbox";
 import { sequenceGenerator, sequenceWorkspaceToCode } from "./generators/sequenceGenerator";
 import { validateSequenceWorkspace } from "./blocks/sequence/validation";
 import { syncParticipantRename } from "./blocks/sequence/renameSync";
+import { defineStateBlocks } from "./blocks/state/blocks";
+import { stateToolbox } from "./blocks/state/toolbox";
+import { stateGenerator, stateWorkspaceToCode } from "./generators/stateGenerator";
+import { validateStateWorkspace } from "./blocks/state/validation";
+import { installStateTransitionNoteRestriction } from "./blocks/state/noteRestriction";
 import { getBlockOwnCode } from "./generators/common/blockSnippet";
 import { PreviewPanel } from "./preview/previewPanel";
 import { saveToLocalStorage } from "./workspace/persistence";
@@ -55,8 +60,10 @@ Blockly.setLocale(En as unknown as Record<string, string>);
 
 defineActivityBlocks();
 defineSequenceBlocks();
+defineStateBlocks();
 installUnifiedBlockRangeOverrides();
 installNoteDirectionMenu();
+installStateTransitionNoteRestriction();
 
 const diagramConfigs: DiagramConfig[] = [
   {
@@ -96,6 +103,16 @@ const diagramConfigs: DiagramConfig[] = [
         parse: parseSequencePlantUml,
         build: buildSequenceWorkspace,
       }),
+  },
+  {
+    key: "state",
+    label: "State Diagram",
+    toolbox: stateToolbox,
+    toCode: stateWorkspaceToCode,
+    generator: stateGenerator,
+    jsonFilename: "state-diagram.json",
+    plantUmlFilename: "state-diagram.puml",
+    onValidate: validateStateWorkspace,
   },
 ];
 
