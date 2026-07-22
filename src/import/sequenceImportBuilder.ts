@@ -1,6 +1,7 @@
 import * as Blockly from "blockly/core";
 import type { SequenceImportedNode } from "./sequenceImportParser";
 import { setNoteDirection } from "../generators/common/noteWrapper";
+import { setFieldValueRefreshingDropdown } from "../blocks/common/setDropdownFieldValue";
 
 /**
  * Turns a parsed node tree (sequenceImportParser.ts) into real blocks in
@@ -88,8 +89,8 @@ function createBlockForNode(workspace: Blockly.Workspace, node: SequenceImported
 
     case "message": {
       const block = workspace.newBlock("sequence_message");
-      block.setFieldValue(node.from, "FROM");
-      block.setFieldValue(node.to, "TO");
+      setFieldValueRefreshingDropdown(block, "FROM", node.from);
+      setFieldValueRefreshingDropdown(block, "TO", node.to);
       block.setFieldValue(node.text, "TEXT");
       return block;
     }
@@ -97,7 +98,7 @@ function createBlockForNode(workspace: Blockly.Workspace, node: SequenceImported
     case "note": {
       const block = workspace.newBlock("sequence_note");
       block.setFieldValue(node.side, "SIDE");
-      block.setFieldValue(node.target, "TARGET");
+      setFieldValueRefreshingDropdown(block, "TARGET", node.target);
       block.setFieldValue(node.text, "TEXT");
       return block;
     }
