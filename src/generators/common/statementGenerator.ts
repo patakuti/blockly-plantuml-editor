@@ -6,10 +6,16 @@ import { wrapWithNoteIfPresent } from "./noteWrapper";
  * next-connections) and concatenates their generated code. Used both for
  * container bodies (If/While/Fork/...) and for top-level diagram generation,
  * so a new container block type never needs its own chain-walking logic.
+ *
+ * `getNoteAnchor`, when given, is consulted per block to target that block's
+ * note explicitly instead of PlantUML's implicit "attach to whatever came
+ * before" form (state diagrams; see noteWrapper.ts's `anchor` parameter).
+ * Activity and sequence diagrams don't pass this and keep prior behavior.
  */
 export function generateStatements(
   generator: CodeGenerator,
   firstBlock: Block | null,
+  getNoteAnchor?: (block: Block) => string | undefined,
 ): string {
   const lines: string[] = [];
   let block = firstBlock;
@@ -17,7 +23,7 @@ export function generateStatements(
     if (block.isEnabled()) {
       const result = generator.blockToCode(block, true);
       const code = Array.isArray(result) ? result[0] : result;
-      if (code) lines.push(wrapWithNoteIfPresent(block, code));
+      if (code) lines.push(wrapWithNoteIfPresent(block, code, getNoteAnchor?.(block)));
     }
     block = block.getNextBlock();
   }
