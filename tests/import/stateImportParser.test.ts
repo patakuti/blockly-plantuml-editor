@@ -26,13 +26,75 @@ describe("parseStatePlantUml", () => {
       {
         kind: "composite",
         name: "Outer",
-        body: [
-          {
-            kind: "composite",
-            name: "Inner",
-            body: [{ kind: "state", name: "Leaf" }],
-          },
+        regions: [
+          [
+            {
+              kind: "composite",
+              name: "Inner",
+              regions: [[{ kind: "state", name: "Leaf" }]],
+            },
+          ],
         ],
+      },
+    ]);
+  });
+
+  it("parses a choice pseudostate declaration", () => {
+    const source = "state Choice1 <<choice>>";
+    expect(parseStatePlantUml(source)).toEqual([{ kind: "choice", name: "Choice1" }]);
+  });
+
+  it("parses a composite state with two concurrent regions separated by \"--\"", () => {
+    const source = "state Active {\nstate A1\n--\nstate A2\n}";
+    expect(parseStatePlantUml(source)).toEqual([
+      {
+        kind: "composite",
+        name: "Active",
+        regions: [[{ kind: "state", name: "A1" }], [{ kind: "state", name: "A2" }]],
+      },
+    ]);
+  });
+
+  it("parses a composite state with three concurrent regions", () => {
+    const source = "state Active {\nstate A1\n--\nstate A2\n--\nstate A3\n}";
+    expect(parseStatePlantUml(source)).toEqual([
+      {
+        kind: "composite",
+        name: "Active",
+        regions: [
+          [{ kind: "state", name: "A1" }],
+          [{ kind: "state", name: "A2" }],
+          [{ kind: "state", name: "A3" }],
+        ],
+      },
+    ]);
+  });
+
+  it("does not let a note attach across a region boundary", () => {
+    const source = "state Active {\nstate A1\n--\nnote right of A1\nstray\nend note\n}";
+    expect(parseStatePlantUml(source)).toEqual([
+      {
+        kind: "composite",
+        name: "Active",
+        regions: [
+          [{ kind: "state", name: "A1" }],
+          [
+            { kind: "raw", text: "note right of A1" },
+            { kind: "raw", text: "stray" },
+            { kind: "raw", text: "end note" },
+          ],
+        ],
+      },
+    ]);
+  });
+
+  it("keeps a \"||\" region separator as a raw line rather than splitting a region", () => {
+    const source = "state Active {\nstate A1\n||\nstate A2\n}";
+    expect(parseStatePlantUml(source)).toEqual([
+      {
+        kind: "composite",
+        name: "Active",
+        regions: [[{ kind: "state", name: "A1" }, { kind: "raw", text: "||" }, { kind: "state", name: "A2" }]],
       },
     ]);
   });
@@ -69,13 +131,20 @@ describe("parseStatePlantUml", () => {
     ]);
   });
 
+  it("attaches a note to a choice pseudostate", () => {
+    const source = "state Choice1 <<choice>>\nnote right of Choice1\nbranch here\nend note";
+    expect(parseStatePlantUml(source)).toEqual([
+      { kind: "choice", name: "Choice1", comment: { text: "branch here", direction: "right" } },
+    ]);
+  });
+
   it("attaches a multi-line left-facing note to a composite state", () => {
     const source = "state A {\nstate B\n}\nnote left of A\nline one\nline two\nend note";
     expect(parseStatePlantUml(source)).toEqual([
       {
         kind: "composite",
         name: "A",
-        body: [{ kind: "state", name: "B" }],
+        regions: [[{ kind: "state", name: "B" }]],
         comment: { text: "line one\nline two", direction: "left" },
       },
     ]);

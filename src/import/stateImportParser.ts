@@ -23,15 +23,18 @@ export type { ImportedComment };
 
 export type StateImportedNode =
   | { kind: "state"; name: string; comment?: ImportedComment }
+  | { kind: "choice"; name: string; comment?: ImportedComment }
   | { kind: "transition"; from: string; to: string; label?: string; comment?: ImportedComment }
-  | { kind: "composite"; name: string; body: StateImportedNode[]; comment?: ImportedComment }
+  | { kind: "composite"; name: string; regions: StateImportedNode[][]; comment?: ImportedComment }
   | { kind: "raw"; text: string; comment?: ImportedComment };
 
 export { PlantUmlImportError };
 
+const CHOICE = /^state\s+(\S+)\s+<<choice>>$/i;
 const STATE = /^state\s+(\S+)$/i;
 const COMPOSITE_OPEN = /^state\s+(\S+)\s*\{$/i;
 const COMPOSITE_END = /^\}$/;
+const REGION_SEPARATOR = /^--$/;
 const TRANSITION = /^(\S+)\s*-->\s*(\S+)(?:\s*:\s*(.*))?$/;
 const NOTE_OF_OPEN = /^note\s+(left|right)\s+of\s+(\S+)$/i;
 
@@ -101,7 +104,8 @@ function attachOrRawifyNote(
   const endLine = cursor.consumeTrimmed();
 
   const last = nodes[nodes.length - 1];
-  const canAttach = last !== undefined && (last.kind === "state" || last.kind === "composite") &&
+  const canAttach = last !== undefined &&
+    (last.kind === "state" || last.kind === "composite" || last.kind === "choice") &&
     last.name === target && !last.comment;
   if (canAttach) {
     last.comment = { text: contentLines.join("\n"), direction };
@@ -113,6 +117,28 @@ function attachOrRawifyNote(
   nodes.push({ kind: "raw", text: endLine });
 }
 
+/**
+ * Parses a Composite State's body as one or more `--`-separated concurrent
+ * regions (02_design.md 22.6, FR-STATE-IMPORT-08). Each region is parsed
+ * with parseStatements up to whichever comes first: another "--" (region
+ * continues) or the closing "}" (left unconsumed for the caller, same as the
+ * pre-Round-12 single-region behavior).
+ */
+function parseCompositeBody(cursor: LineCursor, openLine: string): StateImportedNode[][] {
+  const regions: StateImportedNode[][] = [];
+  while (true) {
+    regions.push(
+      parseStatements(
+        cursor,
+        (line) => COMPOSITE_END.test(line) || REGION_SEPARATOR.test(line),
+        `Missing closing "}" for "${openLine}".`,
+      ),
+    );
+    if (!REGION_SEPARATOR.test(cursor.peekTrimmed())) return regions;
+    cursor.consumeTrimmed(); // "--"
+  }
+}
+
 /** Parses exactly one statement (possibly a container that recurses into parseStatements for its body). */
 function parseOneStatement(cursor: LineCursor): StateImportedNode {
   const trimmed = cursor.peekTrimmed();
@@ -121,13 +147,15 @@ function parseOneStatement(cursor: LineCursor): StateImportedNode {
   if (compositeOpenMatch) {
     cursor.consumeTrimmed();
     const name = unescapeText(compositeOpenMatch[1]);
-    const body = parseStatements(
-      cursor,
-      (line) => COMPOSITE_END.test(line),
-      `Missing closing "}" for "state ${compositeOpenMatch[1]} {".`,
-    );
+    const regions = parseCompositeBody(cursor, `state ${compositeOpenMatch[1]} {`);
     cursor.consumeTrimmed(); // }
-    return { kind: "composite", name, body };
+    return { kind: "composite", name, regions };
+  }
+
+  const choiceMatch = CHOICE.exec(trimmed);
+  if (choiceMatch) {
+    cursor.consumeTrimmed();
+    return { kind: "choice", name: unescapeText(choiceMatch[1]) };
   }
 
   const stateMatch = STATE.exec(trimmed);
