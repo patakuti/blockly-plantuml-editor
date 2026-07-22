@@ -16,6 +16,14 @@ export interface DiagramConfig {
   /** Run on every field-value change, before onValidate (Round 7: FR-SEQ-13/FR-ACT-13 rename sync). */
   onFieldChange?: (workspace: Blockly.Workspace, event: Blockly.Events.BlockChange) => void;
   /**
+   * Block types whose NAME field must be unique across the workspace (Round
+   * 13: FR-SEQ-14/FR-STATE-10). When set, new blocks of these types are
+   * auto-renamed on creation if their NAME collides with an existing one, and
+   * a rename to an already-used name is rejected (reverted) instead of being
+   * propagated by onFieldChange.
+   */
+  nameOwnerTypes?: ReadonlySet<string>;
+  /**
    * Opens this diagram type's "Import PlantUML" dialog, if it has one
    * (01_requirements.md FR-IMPORT-01, 02_design.md 16.5). Absent for diagram
    * types with no importer; ui/toolbar.ts alerts in that case instead of
