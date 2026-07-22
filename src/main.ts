@@ -17,6 +17,7 @@ import { defineStateBlocks } from "./blocks/state/blocks";
 import { stateToolbox } from "./blocks/state/toolbox";
 import { stateGenerator, stateWorkspaceToCode } from "./generators/stateGenerator";
 import { validateStateWorkspace } from "./blocks/state/validation";
+import { syncStateRename } from "./blocks/state/renameSync";
 import { installStateTransitionNoteRestriction } from "./blocks/state/noteRestriction";
 import { getBlockOwnCode } from "./generators/common/blockSnippet";
 import { PreviewPanel } from "./preview/previewPanel";
@@ -115,6 +116,7 @@ const diagramConfigs: DiagramConfig[] = [
     jsonFilename: "state-diagram.json",
     plantUmlFilename: "state-diagram.puml",
     onValidate: validateStateWorkspace,
+    onFieldChange: syncStateRename,
     openImportDialog: (workspace) =>
       openImportDialog(workspace, {
         title: "Import PlantUML (State Diagram)",
