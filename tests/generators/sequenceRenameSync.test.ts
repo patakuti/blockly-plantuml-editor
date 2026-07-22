@@ -37,6 +37,10 @@ describe("syncParticipantRename (FR-SEQ-13)", () => {
 
     expect(message.getFieldValue("FROM")).toBe("Alicia");
     expect(message.getFieldValue("TO")).toBe("Bob");
+    // FieldDropdown caches its option list and only resolves display text
+    // (getText) against that cache, so this also needs a fresh cache to
+    // show "Alicia" instead of the stale "Alice" (see setDropdownFieldValue.ts).
+    expect(message.getField("FROM")!.getText()).toBe("Alicia");
   });
 
   it("updates Note TARGET when the referenced participant is renamed", async () => {

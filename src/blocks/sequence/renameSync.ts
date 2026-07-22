@@ -1,5 +1,6 @@
 import * as Blockly from "blockly/core";
 import { REFERENCE_FIELDS } from "./validation";
+import { setFieldValueRefreshingDropdown } from "../common/setDropdownFieldValue";
 
 /**
  * Keeps Message (FROM/TO) and Note (TARGET) fields in sync when a
@@ -22,7 +23,7 @@ export function syncParticipantRename(workspace: Blockly.Workspace, event: Block
     for (const referencingBlock of workspace.getBlocksByType(blockType, false)) {
       for (const field of fields) {
         if (referencingBlock.getFieldValue(field) === oldValue) {
-          referencingBlock.setFieldValue(newValue, field);
+          setFieldValueRefreshingDropdown(referencingBlock, field, newValue);
         }
       }
     }
