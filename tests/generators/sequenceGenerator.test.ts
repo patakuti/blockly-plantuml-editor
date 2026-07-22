@@ -248,6 +248,17 @@ describe("sequenceWorkspaceToCode", () => {
     );
   });
 
+  it("defaults a freshly placed note's TARGET to the first declared participant, with a matching display text (FR-SEQ-10, 02_design.md 20.1)", () => {
+    const alice = workspace.newBlock("sequence_participant");
+    alice.setFieldValue("Alice", "NAME");
+    const bob = workspace.newBlock("sequence_participant");
+    bob.setFieldValue("Bob", "NAME");
+
+    const note = workspace.newBlock("sequence_note");
+    expect(note.getFieldValue("TARGET")).toBe("Alice");
+    expect(note.getField("TARGET")!.getText()).toBe("Alice");
+  });
+
   it("generates a raw line verbatim and unescaped", () => {
     const raw = workspace.newBlock("sequence_raw_line");
     raw.setFieldValue("autonumber @enduml", "TEXT");

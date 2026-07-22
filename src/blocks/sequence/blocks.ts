@@ -1,6 +1,7 @@
 import * as Blockly from "blockly/core";
 import { SEQUENCE_STATEMENT, PARTICIPANT_STATEMENT } from "./constants";
 import { defineSequenceAltMutator } from "./altMutator";
+import { setFieldValueRefreshingDropdown } from "../common/setDropdownFieldValue";
 
 /**
  * Scans the workspace for declared participants (see 02_design.md 12.11:
@@ -187,11 +188,16 @@ export function defineSequenceBlocks(): void {
       // (FR-SEQ-10). A saved workspace's actual TARGET value, if any, is
       // applied by the deserializer right after this and overrides it; a
       // flyout preview instance sees no participants in its own workspace and
-      // is left untouched.
+      // is left untouched. Goes through setFieldValueRefreshingDropdown
+      // (common/setDropdownFieldValue.ts) rather than a plain setFieldValue:
+      // TARGET's options were cached as "(no participants)" when this field
+      // was constructed (before any participant existed to find), so without
+      // the refresh the block's on-screen label would keep showing that even
+      // though the value/generated PlantUML are already correct.
       const names = this.workspace
         .getBlocksByType("sequence_participant", true)
         .map((b) => b.getFieldValue("NAME") as string);
-      if (names.length > 0) this.setFieldValue(names[0], "TARGET");
+      if (names.length > 0) setFieldValueRefreshingDropdown(this, "TARGET", names[0]);
     },
   };
 }
