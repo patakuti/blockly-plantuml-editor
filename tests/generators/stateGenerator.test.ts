@@ -96,6 +96,87 @@ describe("stateWorkspaceToCode", () => {
       "@startuml\nstate Grouped {\n}\nnote left of Grouped\ngrouped work\nend note\n@enduml\n",
     );
   });
+
+  it("generates a choice pseudostate declaration", () => {
+    const choice = workspace.newBlock("state_choice");
+    choice.setFieldValue("Choice1", "NAME");
+
+    expect(stateWorkspaceToCode(workspace)).toBe("@startuml\nstate Choice1 <<choice>>\n@enduml\n");
+  });
+
+  it("wraps a Choice's comment as an explicit note anchored to its own name", () => {
+    const choice = workspace.newBlock("state_choice");
+    choice.setFieldValue("Choice1", "NAME");
+    choice.setCommentText("branch here");
+
+    expect(stateWorkspaceToCode(workspace)).toBe(
+      "@startuml\nstate Choice1 <<choice>>\nnote right of Choice1\nbranch here\nend note\n@enduml\n",
+    );
+  });
+
+  it("generates a Composite State with no extra regions exactly as before (no \"--\")", () => {
+    const composite = workspace.newBlock("state_composite");
+    composite.setFieldValue("Grouped", "NAME");
+    expect(composite.saveExtraState!()).toEqual({ extraRegionCount: 0 });
+    const sub = workspace.newBlock("state_state");
+    sub.setFieldValue("Sub1", "NAME");
+    composite.getInput("DO")!.connection!.connect(sub.previousConnection!);
+
+    expect(stateWorkspaceToCode(workspace)).toBe("@startuml\nstate Grouped {\nstate Sub1\n}\n@enduml\n");
+  });
+
+  it("round-trips the region-count mutator state and generates concurrent regions separated by \"--\"", () => {
+    const composite = workspace.newBlock("state_composite");
+    composite.setFieldValue("Active", "NAME");
+    expect(composite.getInput("REGION1")).toBeNull();
+
+    composite.loadExtraState!({ extraRegionCount: 1 });
+    expect(composite.saveExtraState!()).toEqual({ extraRegionCount: 1 });
+    expect(composite.getInput("REGION1")).not.toBeNull();
+
+    const region0 = workspace.newBlock("state_state");
+    region0.setFieldValue("A1", "NAME");
+    composite.getInput("DO")!.connection!.connect(region0.previousConnection!);
+    const region1 = workspace.newBlock("state_state");
+    region1.setFieldValue("A2", "NAME");
+    composite.getInput("REGION1")!.connection!.connect(region1.previousConnection!);
+
+    expect(stateWorkspaceToCode(workspace)).toBe(
+      "@startuml\nstate Active {\nstate A1\n--\nstate A2\n}\n@enduml\n",
+    );
+  });
+
+  it("generates three concurrent regions when the mutator count is increased to 2", () => {
+    const composite = workspace.newBlock("state_composite");
+    composite.setFieldValue("Active", "NAME");
+    composite.loadExtraState!({ extraRegionCount: 2 });
+    expect(composite.getInput("REGION2")).not.toBeNull();
+
+    const region2 = workspace.newBlock("state_state");
+    region2.setFieldValue("A3", "NAME");
+    composite.getInput("REGION2")!.connection!.connect(region2.previousConnection!);
+
+    expect(stateWorkspaceToCode(workspace)).toBe(
+      "@startuml\nstate Active {\n--\n--\nstate A3\n}\n@enduml\n",
+    );
+  });
+
+  it("allows a nested Composite State inside a concurrent region", () => {
+    const composite = workspace.newBlock("state_composite");
+    composite.setFieldValue("Active", "NAME");
+    composite.loadExtraState!({ extraRegionCount: 1 });
+
+    const inner = workspace.newBlock("state_composite");
+    inner.setFieldValue("Inner", "NAME");
+    const sub = workspace.newBlock("state_state");
+    sub.setFieldValue("Sub1", "NAME");
+    inner.getInput("DO")!.connection!.connect(sub.previousConnection!);
+    composite.getInput("REGION1")!.connection!.connect(inner.previousConnection!);
+
+    expect(stateWorkspaceToCode(workspace)).toBe(
+      "@startuml\nstate Active {\n--\nstate Inner {\nstate Sub1\n}\n}\n@enduml\n",
+    );
+  });
 });
 
 describe("validateStateWorkspace", () => {
@@ -132,6 +213,16 @@ describe("validateStateWorkspace", () => {
     const transition = workspace.newBlock("state_transition");
     transition.setFieldValue("[*]", "FROM");
     transition.setFieldValue("Grouped", "TO");
+
+    expect(validateStateWorkspace(workspace)).toEqual([]);
+  });
+
+  it("treats a Choice's own name as a valid reference target", () => {
+    const choice = workspace.newBlock("state_choice");
+    choice.setFieldValue("Choice1", "NAME");
+    const transition = workspace.newBlock("state_transition");
+    transition.setFieldValue("[*]", "FROM");
+    transition.setFieldValue("Choice1", "TO");
 
     expect(validateStateWorkspace(workspace)).toEqual([]);
   });

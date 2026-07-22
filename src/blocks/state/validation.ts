@@ -29,6 +29,7 @@ export function validateStateWorkspace(workspace: Blockly.Workspace): StateWarni
     [
       ...workspace.getBlocksByType("state_state", false),
       ...workspace.getBlocksByType("state_composite", false),
+      ...workspace.getBlocksByType("state_choice", false),
     ].map((b) => b.getFieldValue("NAME") as string),
   );
 

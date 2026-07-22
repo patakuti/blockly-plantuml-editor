@@ -2,11 +2,12 @@ import * as Blockly from "blockly/core";
 import { REFERENCE_FIELDS } from "./validation";
 import { setFieldValueRefreshingDropdown } from "../common/setDropdownFieldValue";
 
-const NAME_OWNER_TYPES = new Set(["state_state", "state_composite"]);
+const NAME_OWNER_TYPES = new Set(["state_state", "state_composite", "state_choice"]);
 
 /**
- * Keeps Transition (FROM/TO) fields in sync when a state_state's or
- * state_composite's NAME changes (01_requirements.md FR-STATE-07). Same
+ * Keeps Transition (FROM/TO) fields in sync when a state_state's,
+ * state_composite's, or state_choice's NAME changes (01_requirements.md
+ * FR-STATE-07, extended to state_choice in Round 12). Same
  * unconditional, dialog-free pattern as sequence/renameSync.ts's
  * syncParticipantRename (02_design.md 21.1): state names, like participant
  * names, are expected to identify a single block rather than a group of

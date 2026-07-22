@@ -71,4 +71,28 @@ describe("state PlantUML import round-trip", () => {
     const text = "@startuml\nstate A\nskinparam handwritten true\nA --> B\n@enduml\n";
     expect(roundTrip(text)).toBe(text);
   });
+
+  it("round-trips a choice pseudostate", () => {
+    const text = "@startuml\nstate Choice1 <<choice>>\n[*] --> Choice1\nChoice1 --> State1 : yes\n@enduml\n";
+    expect(roundTrip(text)).toBe(text);
+  });
+
+  it("round-trips a composite state with two concurrent regions", () => {
+    const text = "@startuml\nstate Active {\nstate A1\n--\nstate A2\n}\n@enduml\n";
+    expect(roundTrip(text)).toBe(text);
+  });
+
+  it("round-trips a composite state with three concurrent regions, including a nested composite", () => {
+    const text =
+      "@startuml\n" +
+      "state Active {\n" +
+      "state A1\n" +
+      "--\n" +
+      "state Inner {\nstate Sub1\n}\n" +
+      "--\n" +
+      "state A3\n" +
+      "}\n" +
+      "@enduml\n";
+    expect(roundTrip(text)).toBe(text);
+  });
 });
