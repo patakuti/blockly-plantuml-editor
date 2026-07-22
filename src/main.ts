@@ -19,6 +19,7 @@ import { stateGenerator, stateWorkspaceToCode } from "./generators/stateGenerato
 import { validateStateWorkspace } from "./blocks/state/validation";
 import { syncStateRename } from "./blocks/state/renameSync";
 import { installStateTransitionNoteRestriction } from "./blocks/state/noteRestriction";
+import { guardDuplicateRename, resolveDuplicateNamesOnCreate } from "./blocks/common/duplicateName";
 import { getBlockOwnCode } from "./generators/common/blockSnippet";
 import { PreviewPanel } from "./preview/previewPanel";
 import { saveToLocalStorage } from "./workspace/persistence";
@@ -98,6 +99,7 @@ const diagramConfigs: DiagramConfig[] = [
     plantUmlFilename: "sequence-diagram.puml",
     onValidate: validateSequenceWorkspace,
     onFieldChange: syncParticipantRename,
+    nameOwnerTypes: new Set(["sequence_participant"]),
     openImportDialog: (workspace) =>
       openImportDialog(workspace, {
         title: "Import PlantUML (Sequence Diagram)",
@@ -117,6 +119,7 @@ const diagramConfigs: DiagramConfig[] = [
     plantUmlFilename: "state-diagram.puml",
     onValidate: validateStateWorkspace,
     onFieldChange: syncStateRename,
+    nameOwnerTypes: new Set(["state_state", "state_composite", "state_choice"]),
     openImportDialog: (workspace) =>
       openImportDialog(workspace, {
         title: "Import PlantUML (State Diagram)",
@@ -151,8 +154,14 @@ for (const instance of instances) {
       return;
     }
     if (event.isUiEvent) return;
+    if (event instanceof Blockly.Events.BlockCreate && instance.nameOwnerTypes) {
+      resolveDuplicateNamesOnCreate(instance.workspace, event, instance.nameOwnerTypes);
+    }
     if (event instanceof Blockly.Events.BlockChange && event.element === "field") {
-      instance.onFieldChange?.(instance.workspace, event);
+      const reverted = instance.nameOwnerTypes
+        ? guardDuplicateRename(instance.workspace, event, instance.nameOwnerTypes)
+        : false;
+      if (!reverted) instance.onFieldChange?.(instance.workspace, event);
     }
     saveToLocalStorage(instance.key, instance.workspace);
     instance.onValidate?.(instance.workspace);
