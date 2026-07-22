@@ -35,6 +35,8 @@ import { parseActivityPlantUml } from "./import/activityImportParser";
 import { buildActivityWorkspace } from "./import/activityImportBuilder";
 import { parseSequencePlantUml } from "./import/sequenceImportParser";
 import { buildSequenceWorkspace } from "./import/sequenceImportBuilder";
+import { parseStatePlantUml } from "./import/stateImportParser";
+import { buildStateWorkspace } from "./import/stateImportBuilder";
 
 const app = document.getElementById("app")!;
 
@@ -113,6 +115,14 @@ const diagramConfigs: DiagramConfig[] = [
     jsonFilename: "state-diagram.json",
     plantUmlFilename: "state-diagram.puml",
     onValidate: validateStateWorkspace,
+    openImportDialog: (workspace) =>
+      openImportDialog(workspace, {
+        title: "Import PlantUML (State Diagram)",
+        hint: "Paste PlantUML state-diagram source. Unrecognized lines are kept as Raw PlantUML Line blocks.",
+        placeholder: "@startuml\nstate State1\n[*] --> State1\nState1 --> [*]\n@enduml",
+        parse: parseStatePlantUml,
+        build: buildStateWorkspace,
+      }),
   },
 ];
 

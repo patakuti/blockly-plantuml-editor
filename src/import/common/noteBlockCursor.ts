@@ -16,7 +16,8 @@ export interface ImportedComment {
 }
 
 const NOTE_OPEN = /^note\s+(right|left)$/i;
-const NOTE_END = /^end note$/i;
+/** Matches a bare `end note` line. Exported so parsers with their own note-open forms (e.g. stateImportParser.ts's explicit-anchor form) can still consume the closing line without redefining this regex. */
+export const NOTE_END = /^end note$/i;
 
 export class LineCursor {
   private index = 0;
