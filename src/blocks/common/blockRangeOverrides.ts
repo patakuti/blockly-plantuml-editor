@@ -1,5 +1,5 @@
 import * as Blockly from "blockly/core";
-import { forgetBlocks, registerIneligible } from "./autoDefaultTracking";
+import { registerIneligible } from "./autoDefaultTracking";
 
 /**
  * Blockly's built-in duplicate/delete actions only ever affect a single
@@ -79,16 +79,16 @@ function duplicateBlockAndChain(block: Blockly.BlockSvg): void {
 }
 
 /**
- * Deletes `block` plus its next-chain and nested children. Forgets their IDs
- * from Round 14's auto-default tracking first (02_design.md 24.11): confirmed
- * live that dragging a fresh block out of the same toolbox flyout slot right
- * after this can hand it the exact same ID the just-deleted block had, which
- * must be treated as a genuinely new block, not as Undo/Redo restoring the
- * old one.
+ * Deletes `block` plus its next-chain and nested children. The resulting
+ * `Blockly.Events.BlockDelete` is handled generically by `main.ts` (forgets
+ * the deleted IDs from Round 14's auto-default tracking, 02_design.md
+ * 24.11/26.3c): confirmed live that dragging a fresh block out of the same
+ * toolbox flyout slot right after this can hand it the exact same ID the
+ * just-deleted block had, which must be treated as a genuinely new block, not
+ * as Undo/Redo restoring the old one.
  */
 function deleteBlockAndChain(block: Blockly.BlockSvg): void {
   if (block.workspace.isFlyout) return;
-  forgetBlocks(block.getDescendants(false).map((b) => b.id));
   Blockly.Events.setGroup(true);
   try {
     block.workspace.hideChaff();

@@ -21,8 +21,13 @@ describe("autoDefaultTracking", () => {
 
   beforeEach(() => {
     workspace = new Blockly.Workspace();
+    // Mirrors main.ts's shared change listener (02_design.md 26.3c): BlockDelete is handled
+    // generically here, not by each individual deletion code path, so it covers every way a
+    // block can be removed (right-click/keyboard delete, dragging onto the toolbox, and every
+    // workspace.clear() call site) with a single mechanism.
     workspace.addChangeListener((event) => {
       if (event instanceof Blockly.Events.BlockCreate) trackBlockCreate(event);
+      if (event instanceof Blockly.Events.BlockDelete) forgetBlocks(event.ids ?? []);
     });
   });
 
@@ -70,21 +75,73 @@ describe("autoDefaultTracking", () => {
     expect(isEligible(block.id)).toBe(false);
   });
 
-  it("forgetBlocks makes a later BlockCreate reusing the same ID eligible again (02_design.md 24.11)", async () => {
+  it("a real block.dispose() makes a later BlockCreate reusing the same ID eligible again (02_design.md 24.11/26.3c)", async () => {
     // Confirmed live: Blockly can hand a fresh toolbox-drag the exact same ID a
     // just-deleted block had, if that ID is free in the workspace. Without
-    // forgetBlocks at delete time, this ID reuse would be misread as Undo/Redo
-    // restoring the deleted block, permanently excluding every future block
-    // that happens to reuse that ID.
+    // forgetBlocks reacting to the resulting BlockDelete, this ID reuse would be
+    // misread as Undo/Redo restoring the deleted block, permanently excluding
+    // every future block that happens to reuse that ID.
+    //
+    // Deliberately calls block.dispose() directly rather than going through
+    // deleteBlockAndChain (blocks/common/blockRangeOverrides.ts): this is the
+    // same underlying call Blockly's own drag-to-toolbox delete gesture makes,
+    // which never passes through deleteBlockAndChain at all (02_design.md
+    // 26.3c) -- so the fix has to work generically off the BlockDelete event,
+    // not off a specific deletion code path.
     const block = workspace.newBlock("sequence_message");
     await flushEvents();
     consumeEligibility(block.id);
     expect(isEligible(block.id)).toBe(false);
 
-    forgetBlocks([block.id]); // simulates deleteBlockAndChain right before disposing the block
+    const blockId = block.id;
+    block.dispose(false);
+    await flushEvents();
 
     // A later, unrelated BlockCreate reusing the same ID string is treated as genuinely new.
-    trackBlockCreate(new Blockly.Events.BlockCreate(block));
-    expect(isEligible(block.id)).toBe(true);
+    const fresh = workspace.newBlock("sequence_message", blockId);
+    await flushEvents();
+    expect(isEligible(fresh.id)).toBe(true);
+  });
+
+  it("workspace.clear() forgets every block via its own individual BlockDelete events, making reused IDs eligible again", async () => {
+    // Regression test: the toolbar's Clear button, PlantUML import, and JSON import all
+    // discard every block via workspace.clear() directly. Unlike a single block's delete,
+    // clear() disposes each top-level block separately, firing one BlockDelete per block --
+    // confirmed this still reaches the same generic handler, so no dedicated call site is
+    // needed for Clear/import to also forget their blocks (02_design.md 26.3b was an earlier,
+    // narrower per-call-site fix; 26.3c replaces it with this single generic mechanism).
+    const block = workspace.newBlock("sequence_message");
+    await flushEvents();
+    consumeEligibility(block.id);
+    expect(isEligible(block.id)).toBe(false);
+
+    const blockId = block.id;
+    workspace.clear();
+    await flushEvents();
+
+    const fresh = workspace.newBlock("sequence_message", blockId);
+    await flushEvents();
+    expect(isEligible(fresh.id)).toBe(true);
+  });
+
+  it("without a BlockDelete listener, a reused ID stays permanently ineligible", async () => {
+    // Same scenario as above but with a workspace that never wires forgetBlocks to
+    // BlockDelete, to document the bug this design guards against.
+    const bareWorkspace = new Blockly.Workspace();
+    bareWorkspace.addChangeListener((event) => {
+      if (event instanceof Blockly.Events.BlockCreate) trackBlockCreate(event);
+    });
+
+    const block = bareWorkspace.newBlock("sequence_message");
+    await flushEvents();
+    consumeEligibility(block.id);
+
+    const blockId = block.id;
+    block.dispose(false);
+    await flushEvents();
+
+    const fresh = bareWorkspace.newBlock("sequence_message", blockId);
+    await flushEvents();
+    expect(isEligible(fresh.id)).toBe(false);
   });
 });

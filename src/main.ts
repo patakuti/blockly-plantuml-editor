@@ -22,7 +22,7 @@ import { syncStateRename } from "./blocks/state/renameSync";
 import { applyStateAutoDefault } from "./blocks/state/autoDefault";
 import { installStateTransitionNoteRestriction } from "./blocks/state/noteRestriction";
 import { guardDuplicateRename, resolveDuplicateNamesOnCreate } from "./blocks/common/duplicateName";
-import { trackBlockCreate, isEligible } from "./blocks/common/autoDefaultTracking";
+import { trackBlockCreate, isEligible, forgetBlocks } from "./blocks/common/autoDefaultTracking";
 import { getBlockOwnCode } from "./generators/common/blockSnippet";
 import { PreviewPanel } from "./preview/previewPanel";
 import { saveToLocalStorage } from "./workspace/persistence";
@@ -164,6 +164,9 @@ for (const instance of instances) {
       if (instance.nameOwnerTypes) {
         resolveDuplicateNamesOnCreate(instance.workspace, event, instance.nameOwnerTypes);
       }
+    }
+    if (event instanceof Blockly.Events.BlockDelete) {
+      forgetBlocks(event.ids ?? []);
     }
     if (event instanceof Blockly.Events.BlockChange && event.element === "field") {
       const reverted = instance.nameOwnerTypes
