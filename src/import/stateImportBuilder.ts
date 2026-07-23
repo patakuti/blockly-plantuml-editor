@@ -2,6 +2,7 @@ import * as Blockly from "blockly/core";
 import type { StateImportedNode } from "./stateImportParser";
 import { setNoteDirection } from "../generators/common/noteWrapper";
 import { setFieldValueRefreshingDropdown } from "../blocks/common/setDropdownFieldValue";
+import { registerIneligible } from "../blocks/common/autoDefaultTracking";
 
 /**
  * Turns a parsed node tree (stateImportParser.ts) into real blocks in
@@ -88,6 +89,10 @@ function attachChain(
 function buildBlock(workspace: Blockly.Workspace, node: StateImportedNode): Blockly.Block {
   const block = createBlockForNode(workspace, node);
   finishBlock(block);
+  // Already carries its real field values (parsed from the imported PlantUML source),
+  // so Round 14's auto-default must not treat it as a freshly-dropped blank block
+  // (02_design.md 24.4).
+  registerIneligible([block.id]);
   if (node.comment) {
     block.setCommentText(node.comment.text);
     setNoteDirection(block, node.comment.direction);

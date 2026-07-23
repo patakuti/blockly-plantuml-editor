@@ -13,13 +13,16 @@ import { sequenceToolbox } from "./blocks/sequence/toolbox";
 import { sequenceGenerator, sequenceWorkspaceToCode } from "./generators/sequenceGenerator";
 import { validateSequenceWorkspace } from "./blocks/sequence/validation";
 import { syncParticipantRename } from "./blocks/sequence/renameSync";
+import { applySequenceAutoDefault } from "./blocks/sequence/autoDefault";
 import { defineStateBlocks } from "./blocks/state/blocks";
 import { stateToolbox } from "./blocks/state/toolbox";
 import { stateGenerator, stateWorkspaceToCode } from "./generators/stateGenerator";
 import { validateStateWorkspace } from "./blocks/state/validation";
 import { syncStateRename } from "./blocks/state/renameSync";
+import { applyStateAutoDefault } from "./blocks/state/autoDefault";
 import { installStateTransitionNoteRestriction } from "./blocks/state/noteRestriction";
 import { guardDuplicateRename, resolveDuplicateNamesOnCreate } from "./blocks/common/duplicateName";
+import { trackBlockCreate, isEligible } from "./blocks/common/autoDefaultTracking";
 import { getBlockOwnCode } from "./generators/common/blockSnippet";
 import { PreviewPanel } from "./preview/previewPanel";
 import { saveToLocalStorage } from "./workspace/persistence";
@@ -100,6 +103,7 @@ const diagramConfigs: DiagramConfig[] = [
     onValidate: validateSequenceWorkspace,
     onFieldChange: syncParticipantRename,
     nameOwnerTypes: new Set(["sequence_participant"]),
+    autoDefaultOnConnect: applySequenceAutoDefault,
     openImportDialog: (workspace) =>
       openImportDialog(workspace, {
         title: "Import PlantUML (Sequence Diagram)",
@@ -120,6 +124,7 @@ const diagramConfigs: DiagramConfig[] = [
     onValidate: validateStateWorkspace,
     onFieldChange: syncStateRename,
     nameOwnerTypes: new Set(["state_state", "state_composite", "state_choice"]),
+    autoDefaultOnConnect: applyStateAutoDefault,
     openImportDialog: (workspace) =>
       openImportDialog(workspace, {
         title: "Import PlantUML (State Diagram)",
@@ -154,14 +159,26 @@ for (const instance of instances) {
       return;
     }
     if (event.isUiEvent) return;
-    if (event instanceof Blockly.Events.BlockCreate && instance.nameOwnerTypes) {
-      resolveDuplicateNamesOnCreate(instance.workspace, event, instance.nameOwnerTypes);
+    if (event instanceof Blockly.Events.BlockCreate) {
+      trackBlockCreate(event);
+      if (instance.nameOwnerTypes) {
+        resolveDuplicateNamesOnCreate(instance.workspace, event, instance.nameOwnerTypes);
+      }
     }
     if (event instanceof Blockly.Events.BlockChange && event.element === "field") {
       const reverted = instance.nameOwnerTypes
         ? guardDuplicateRename(instance.workspace, event, instance.nameOwnerTypes)
         : false;
       if (!reverted) instance.onFieldChange?.(instance.workspace, event);
+    }
+    if (
+      event instanceof Blockly.Events.BlockMove &&
+      instance.autoDefaultOnConnect &&
+      event.blockId &&
+      isEligible(event.blockId)
+    ) {
+      const block = instance.workspace.getBlockById(event.blockId);
+      if (block) instance.autoDefaultOnConnect(instance.workspace, block);
     }
     saveToLocalStorage(instance.key, instance.workspace);
     instance.onValidate?.(instance.workspace);

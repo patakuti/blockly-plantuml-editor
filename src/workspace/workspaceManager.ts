@@ -24,6 +24,12 @@ export interface DiagramConfig {
    */
   nameOwnerTypes?: ReadonlySet<string>;
   /**
+   * Run when a block that was never seen before this session makes its
+   * first-ever stack/input connection (Round 14: FR-SEQ-15/16, FR-STATE-11).
+   * Absent for diagram types with no auto-default logic (activity).
+   */
+  autoDefaultOnConnect?: (workspace: Blockly.Workspace, block: Blockly.Block) => void;
+  /**
    * Opens this diagram type's "Import PlantUML" dialog, if it has one
    * (01_requirements.md FR-IMPORT-01, 02_design.md 16.5). Absent for diagram
    * types with no importer; ui/toolbar.ts alerts in that case instead of
