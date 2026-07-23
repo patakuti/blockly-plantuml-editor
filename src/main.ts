@@ -21,6 +21,10 @@ import { validateStateWorkspace } from "./blocks/state/validation";
 import { syncStateRename } from "./blocks/state/renameSync";
 import { applyStateAutoDefault } from "./blocks/state/autoDefault";
 import { installStateTransitionNoteRestriction } from "./blocks/state/noteRestriction";
+import { defineComponentBlocks } from "./blocks/component/blocks";
+import { componentToolbox } from "./blocks/component/toolbox";
+import { componentGenerator, componentWorkspaceToCode } from "./generators/componentGenerator";
+import { validateComponentWorkspace } from "./blocks/component/validation";
 import { guardDuplicateRename, resolveDuplicateNamesOnCreate } from "./blocks/common/duplicateName";
 import { trackBlockCreate, isEligible, forgetBlocks } from "./blocks/common/autoDefaultTracking";
 import { getBlockOwnCode } from "./generators/common/blockSnippet";
@@ -68,6 +72,7 @@ Blockly.setLocale(En as unknown as Record<string, string>);
 defineActivityBlocks();
 defineSequenceBlocks();
 defineStateBlocks();
+defineComponentBlocks();
 installUnifiedBlockRangeOverrides();
 installNoteDirectionMenu();
 installStateTransitionNoteRestriction();
@@ -133,6 +138,17 @@ const diagramConfigs: DiagramConfig[] = [
         parse: parseStatePlantUml,
         build: buildStateWorkspace,
       }),
+  },
+  {
+    key: "component",
+    label: "Component Diagram",
+    toolbox: componentToolbox,
+    toCode: componentWorkspaceToCode,
+    generator: componentGenerator,
+    jsonFilename: "component-diagram.json",
+    plantUmlFilename: "component-diagram.puml",
+    onValidate: validateComponentWorkspace,
+    nameOwnerTypes: new Set(["component_component"]),
   },
 ];
 

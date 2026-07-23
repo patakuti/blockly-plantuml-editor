@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import * as Blockly from "blockly/core";
 import { defineSequenceBlocks } from "../../src/blocks/sequence/blocks";
 import { defineStateBlocks } from "../../src/blocks/state/blocks";
+import { defineComponentBlocks } from "../../src/blocks/component/blocks";
 import {
   guardDuplicateRename,
   nextAvailableName,
@@ -12,6 +13,7 @@ import { syncStateRename } from "../../src/blocks/state/renameSync";
 
 defineSequenceBlocks();
 defineStateBlocks();
+defineComponentBlocks();
 
 /** Blockly.Events.fire() batches through an internal queue flushed via setTimeout(0), not synchronously. */
 function flushEvents(): Promise<void> {
@@ -119,6 +121,27 @@ describe("guardDuplicateRename (FR-SEQ-14/FR-STATE-10)", () => {
     expect(choice.getFieldValue("NAME")).toBe("B");
   });
 
+  it("reverts a rename to a name already used by another component (FR-COMP-04)", async () => {
+    const COMPONENT_OWNER_TYPES = new Set(["component_component"]);
+    workspace.addChangeListener((event) => {
+      if (event instanceof Blockly.Events.BlockChange && event.element === "field") {
+        guardDuplicateRename(workspace, event, COMPONENT_OWNER_TYPES);
+      }
+    });
+
+    const alpha = workspace.newBlock("component_component");
+    alpha.setFieldValue("Alpha", "NAME");
+    await flushEvents();
+    const beta = workspace.newBlock("component_component");
+    beta.setFieldValue("Beta", "NAME");
+    await flushEvents();
+
+    beta.setFieldValue("Alpha", "NAME");
+    await flushEvents();
+
+    expect(beta.getFieldValue("NAME")).toBe("Beta");
+  });
+
   it("does not block a no-op rename back to the same value", async () => {
     workspace.addChangeListener((event) => {
       if (event instanceof Blockly.Events.BlockChange && event.element === "field") {
@@ -220,6 +243,42 @@ describe("resolveDuplicateNamesOnCreate (FR-SEQ-14/FR-STATE-10)", () => {
     const names = [a, b, c].map((block) => block.getFieldValue("NAME"));
     expect(new Set(names).size).toBe(3);
     expect(names).toContain("Same");
+  });
+});
+
+describe("resolveDuplicateNamesOnCreate for component_component (FR-COMP-04)", () => {
+  const COMPONENT_OWNER_TYPES = new Set(["component_component"]);
+  let workspace: Blockly.Workspace;
+
+  beforeEach(() => {
+    workspace = new Blockly.Workspace();
+    workspace.addChangeListener((event) => {
+      if (event instanceof Blockly.Events.BlockCreate) {
+        resolveDuplicateNamesOnCreate(workspace, event, COMPONENT_OWNER_TYPES);
+      }
+    });
+  });
+
+  it("auto-renames a newly created component whose default name collides", async () => {
+    const first = workspace.newBlock("component_component");
+    await flushEvents();
+    expect(first.getFieldValue("NAME")).toBe("Component1");
+
+    const second = workspace.newBlock("component_component");
+    await flushEvents();
+
+    expect(second.getFieldValue("NAME")).toBe("Component2");
+  });
+
+  it("resolves a nested component's collision the same way as a top-level one", async () => {
+    const outer = workspace.newBlock("component_component");
+    await flushEvents();
+    const inner = workspace.newBlock("component_component");
+    await flushEvents();
+    outer.getInput("DO")!.connection!.connect(inner.previousConnection!);
+
+    expect(outer.getFieldValue("NAME")).toBe("Component1");
+    expect(inner.getFieldValue("NAME")).toBe("Component2");
   });
 });
 
