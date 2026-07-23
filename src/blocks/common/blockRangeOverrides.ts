@@ -1,4 +1,5 @@
 import * as Blockly from "blockly/core";
+import { forgetBlocks, registerIneligible } from "./autoDefaultTracking";
 
 /**
  * Blockly's built-in duplicate/delete actions only ever affect a single
@@ -63,16 +64,31 @@ function overrideDeleteShortcut(): void {
   });
 }
 
-/** Duplicates `block` plus its next-chain and nested children. */
+/**
+ * Duplicates `block` plus its next-chain and nested children. The pasted
+ * blocks already carry the source's field values (FROM/TO/TARGET included),
+ * so they're excluded from Round 14's auto-default (02_design.md 24.4): left
+ * untracked, a later manual reconnect would treat them as freshly-dropped
+ * blank blocks and overwrite the values this duplicate is meant to preserve.
+ */
 function duplicateBlockAndChain(block: Blockly.BlockSvg): void {
   const copyData = block.toCopyData(/* addNextBlocks= */ true);
   if (!copyData) return;
-  Blockly.clipboard.paste(copyData, block.workspace);
+  const pasted = Blockly.clipboard.paste(copyData, block.workspace) as Blockly.BlockSvg | null;
+  if (pasted) registerIneligible(pasted.getDescendants(false).map((b) => b.id));
 }
 
-/** Deletes `block` plus its next-chain and nested children. */
+/**
+ * Deletes `block` plus its next-chain and nested children. Forgets their IDs
+ * from Round 14's auto-default tracking first (02_design.md 24.11): confirmed
+ * live that dragging a fresh block out of the same toolbox flyout slot right
+ * after this can hand it the exact same ID the just-deleted block had, which
+ * must be treated as a genuinely new block, not as Undo/Redo restoring the
+ * old one.
+ */
 function deleteBlockAndChain(block: Blockly.BlockSvg): void {
   if (block.workspace.isFlyout) return;
+  forgetBlocks(block.getDescendants(false).map((b) => b.id));
   Blockly.Events.setGroup(true);
   try {
     block.workspace.hideChaff();

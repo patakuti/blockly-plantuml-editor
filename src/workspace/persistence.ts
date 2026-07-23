@@ -1,6 +1,18 @@
 import * as Blockly from "blockly/core";
+import { registerIneligible } from "../blocks/common/autoDefaultTracking";
 
 const STORAGE_KEY_PREFIX = "bpe:";
+
+/**
+ * Blocks restored from a full workspace load already carry their real field
+ * values (FROM/TO/TARGET included), so Round 14's auto-default must not
+ * treat them as freshly-dropped blank blocks (02_design.md 24.4) -- otherwise
+ * a later manual reconnect of a restored block would overwrite its restored
+ * values with a neighbor-based guess.
+ */
+function excludeFromAutoDefault(workspace: Blockly.Workspace): void {
+  registerIneligible(workspace.getAllBlocks(false).map((b) => b.id));
+}
 
 export function saveToLocalStorage(diagramType: string, workspace: Blockly.Workspace): void {
   const state = Blockly.serialization.workspaces.save(workspace);
@@ -12,6 +24,7 @@ export function loadFromLocalStorage(diagramType: string, workspace: Blockly.Wor
   const raw = localStorage.getItem(STORAGE_KEY_PREFIX + diagramType);
   if (!raw) return false;
   Blockly.serialization.workspaces.load(JSON.parse(raw), workspace);
+  excludeFromAutoDefault(workspace);
   return true;
 }
 
@@ -24,6 +37,7 @@ export async function importWorkspaceJson(file: File, workspace: Blockly.Workspa
   const state = JSON.parse(await file.text());
   workspace.clear();
   Blockly.serialization.workspaces.load(state, workspace);
+  excludeFromAutoDefault(workspace);
 }
 
 export async function exportPlantUmlText(filename: string, plantUmlText: string): Promise<void> {
