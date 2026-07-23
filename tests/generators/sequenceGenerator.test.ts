@@ -72,6 +72,37 @@ describe("sequenceWorkspaceToCode", () => {
     );
   });
 
+  it("generates an actor declaration (FR-SEQ-17)", () => {
+    const alice = workspace.newBlock("sequence_actor");
+    alice.setFieldValue("Alice", "NAME");
+
+    expect(sequenceWorkspaceToCode(workspace)).toBe('@startuml\nactor "Alice"\n@enduml\n');
+  });
+
+  it("generates a chain mixing participant and actor declarations, preserving connection order", () => {
+    const alice = workspace.newBlock("sequence_actor");
+    alice.setFieldValue("Alice", "NAME");
+    const bob = workspace.newBlock("sequence_participant");
+    bob.setFieldValue("Bob", "NAME");
+    alice.nextConnection!.connect(bob.previousConnection!);
+
+    expect(sequenceWorkspaceToCode(workspace)).toBe(
+      '@startuml\nactor "Alice"\nparticipant "Bob"\n@enduml\n',
+    );
+  });
+
+  it("still includes an actor left disconnected from a participant chain", () => {
+    const alice = workspace.newBlock("sequence_participant");
+    alice.setFieldValue("Alice", "NAME");
+    const bob = workspace.newBlock("sequence_actor");
+    bob.setFieldValue("Bob", "NAME");
+    bob.moveBy(0, -50); // above Alice, but not connected to it
+
+    expect(sequenceWorkspaceToCode(workspace)).toBe(
+      '@startuml\nactor "Bob"\nparticipant "Alice"\n@enduml\n',
+    );
+  });
+
   it("generates a message chain between declared participants", () => {
     const alice = workspace.newBlock("sequence_participant");
     alice.setFieldValue("Alice", "NAME");
@@ -109,6 +140,22 @@ describe("sequenceWorkspaceToCode", () => {
     expect(sequenceWorkspaceToCode(workspace)).toBe(
       '@startuml\nparticipant "Alice"\nparticipant "Bob"\n' +
         '"Alice" -> "Bob": hello\n"Bob" -> "Alice": hi back\n@enduml\n',
+    );
+  });
+
+  it("generates a message between an actor and a participant (FR-SEQ-17)", () => {
+    const alice = workspace.newBlock("sequence_actor");
+    alice.setFieldValue("Alice", "NAME");
+    const bob = workspace.newBlock("sequence_participant");
+    bob.setFieldValue("Bob", "NAME");
+
+    const message = workspace.newBlock("sequence_message");
+    message.setFieldValue("Alice", "FROM");
+    message.setFieldValue("Bob", "TO");
+    message.setFieldValue("hello there", "TEXT");
+
+    expect(sequenceWorkspaceToCode(workspace)).toBe(
+      '@startuml\nactor "Alice"\nparticipant "Bob"\n"Alice" -> "Bob": hello there\n@enduml\n',
     );
   });
 

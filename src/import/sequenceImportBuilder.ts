@@ -13,12 +13,13 @@ import { registerIneligible } from "../blocks/common/autoDefaultTracking";
  * The parser returns one flat, ordered node list (there's no separate
  * grammar for "the participant area" -- see sequenceImportParser.ts's
  * top-of-file comment), so building has to do the split
- * sequenceWorkspaceToCode's generation does in reverse: all `participant`
- * nodes become the PARTICIPANT_STATEMENT chain, everything else becomes the
- * SEQUENCE_STATEMENT chain, each preserving its own relative order. A raw
- * line that appeared between participant declarations in the source
- * therefore always lands in the message-chain group on import (02_design.md
- * 16.6's documented known limitation).
+ * sequenceWorkspaceToCode's generation does in reverse: all `participant`/
+ * `actor` nodes become the PARTICIPANT_STATEMENT chain (preserving their
+ * relative order even when interleaved, 02_design.md 25.9), everything else
+ * becomes the SEQUENCE_STATEMENT chain, each preserving its own relative
+ * order. A raw line that appeared between participant/actor declarations in
+ * the source therefore always lands in the message-chain group on import
+ * (02_design.md 16.6's documented known limitation).
  *
  * Replaces the entire workspace: callers are expected to have already
  * confirmed this with the user when there was something to lose
@@ -28,8 +29,8 @@ export function buildSequenceWorkspace(workspace: Blockly.Workspace, nodes: Sequ
   Blockly.Events.setGroup(true);
   try {
     workspace.clear();
-    const participantNodes = nodes.filter((node) => node.kind === "participant");
-    const statementNodes = nodes.filter((node) => node.kind !== "participant");
+    const participantNodes = nodes.filter((node) => node.kind === "participant" || node.kind === "actor");
+    const statementNodes = nodes.filter((node) => node.kind !== "participant" && node.kind !== "actor");
     buildChain(workspace, participantNodes);
     buildChain(workspace, statementNodes);
   } finally {
@@ -88,6 +89,12 @@ function createBlockForNode(workspace: Blockly.Workspace, node: SequenceImported
   switch (node.kind) {
     case "participant": {
       const block = workspace.newBlock("sequence_participant");
+      block.setFieldValue(node.name, "NAME");
+      return block;
+    }
+
+    case "actor": {
+      const block = workspace.newBlock("sequence_actor");
       block.setFieldValue(node.name, "NAME");
       return block;
     }

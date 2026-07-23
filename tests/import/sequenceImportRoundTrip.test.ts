@@ -25,6 +25,11 @@ describe("sequence PlantUML import round-trip", () => {
     expect(roundTrip(text)).toBe(text);
   });
 
+  it("round-trips actors interleaved with participants, preserving declaration order (FR-SEQ-17)", () => {
+    const text = '@startuml\nactor "Alice"\nparticipant "Bob"\nactor "Carol"\n"Alice" -> "Bob": ping\n@enduml\n';
+    expect(roundTrip(text)).toBe(text);
+  });
+
   it("round-trips an alt with no else", () => {
     const text = '@startuml\nparticipant "Alice"\nparticipant "Bob"\nalt (ok)\n"Alice" -> "Bob": ping\nend\n@enduml\n';
     expect(roundTrip(text)).toBe(text);

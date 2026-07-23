@@ -1,18 +1,22 @@
 import * as Blockly from "blockly/core";
-import { SEQUENCE_STATEMENT, PARTICIPANT_STATEMENT } from "./constants";
+import { SEQUENCE_STATEMENT, PARTICIPANT_STATEMENT, PARTICIPANT_LIKE_TYPES } from "./constants";
 import { defineSequenceAltMutator } from "./altMutator";
 import { setFieldValueRefreshingDropdown } from "../common/setDropdownFieldValue";
 
 /**
- * Scans the workspace for declared participants (see 02_design.md 12.11:
- * declaration order follows the participant chain, reorderable by dragging)
- * and returns them as dropdown options for Message/Note "from"/"to" fields.
+ * Scans the workspace for declared participants/actors (see 02_design.md
+ * 12.11: declaration order follows the shared declaration chain, reorderable
+ * by dragging) and returns them as dropdown options for Message/Note
+ * "from"/"to" fields. Uses getAllBlocks(true) rather than getBlocksByType per
+ * type so the two types are merged under Blockly's own position-based sort
+ * instead of a custom re-sort (02_design.md 25.4).
  */
 function participantOptions(this: Blockly.FieldDropdown): Blockly.MenuOption[] {
   const block = this.getSourceBlock();
   const names = block
     ? block.workspace
-        .getBlocksByType("sequence_participant", true)
+        .getAllBlocks(true)
+        .filter((b) => (PARTICIPANT_LIKE_TYPES as readonly string[]).includes(b.type))
         .map((b) => b.getFieldValue("NAME") as string)
     : [];
   if (names.length === 0) return [["(no participants)", ""]];
@@ -57,6 +61,23 @@ export function defineSequenceBlocks(): void {
       nextStatement: PARTICIPANT_STATEMENT,
       colour: 160,
       tooltip: "Declares a participant (lifeline). Drag to reorder among other participants.",
+    },
+    {
+      type: "sequence_actor",
+      message0: "actor %1",
+      args0: [
+        {
+          type: "field_input",
+          name: "NAME",
+          text: "Actor",
+        },
+      ],
+      previousStatement: PARTICIPANT_STATEMENT,
+      nextStatement: PARTICIPANT_STATEMENT,
+      colour: 160,
+      tooltip:
+        "Declares an actor (stick-figure lifeline). Shares its name namespace with " +
+        "Participant and can be dragged to reorder among them.",
     },
     {
       type: "sequence_alt",
@@ -195,7 +216,8 @@ export function defineSequenceBlocks(): void {
       // the refresh the block's on-screen label would keep showing that even
       // though the value/generated PlantUML are already correct.
       const names = this.workspace
-        .getBlocksByType("sequence_participant", true)
+        .getAllBlocks(true)
+        .filter((b) => (PARTICIPANT_LIKE_TYPES as readonly string[]).includes(b.type))
         .map((b) => b.getFieldValue("NAME") as string);
       if (names.length > 0) setFieldValueRefreshingDropdown(this, "TARGET", names[0]);
     },

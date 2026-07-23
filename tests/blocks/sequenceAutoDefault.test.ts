@@ -54,6 +54,12 @@ function participant(workspace: Blockly.Workspace, name: string): Blockly.Block 
   return block;
 }
 
+function actor(workspace: Blockly.Workspace, name: string): Blockly.Block {
+  const block = workspace.newBlock("sequence_actor");
+  block.setFieldValue(name, "NAME");
+  return block;
+}
+
 function message(workspace: Blockly.Workspace, from: string, to: string): Blockly.Block {
   const block = workspace.newBlock("sequence_message");
   block.setFieldValue(from, "FROM");
@@ -139,6 +145,19 @@ describe("applySequenceAutoDefault (FR-SEQ-15/16)", () => {
     participant(workspace, "Alice");
     participant(workspace, "Bob");
     const before = workspace.newBlock("sequence_note"); // not a sequence_message, so it doesn't count as "preceding"
+    await flushEvents();
+
+    const first = workspace.newBlock("sequence_message");
+    before.nextConnection!.connect(first.previousConnection!);
+    await flushEvents();
+
+    expect(first.getFieldValue("FROM")).toBe("Alice");
+    expect(first.getFieldValue("TO")).toBe("Alice");
+  });
+
+  it("falls back to the first declared Actor when the only declared lifeline is an Actor (FR-SEQ-17)", async () => {
+    actor(workspace, "Alice");
+    const before = workspace.newBlock("sequence_note");
     await flushEvents();
 
     const first = workspace.newBlock("sequence_message");

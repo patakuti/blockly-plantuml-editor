@@ -49,6 +49,32 @@ describe("validateSequenceWorkspace", () => {
     expect(hasWarning(validateSequenceWorkspace(workspace), note)).toBe(true);
   });
 
+  it("does not warn on a message referencing an existing actor (FR-SEQ-17)", () => {
+    const alice = workspace.newBlock("sequence_actor");
+    alice.setFieldValue("Alice", "NAME");
+    const bob = workspace.newBlock("sequence_participant");
+    bob.setFieldValue("Bob", "NAME");
+
+    const message = workspace.newBlock("sequence_message");
+    message.setFieldValue("Alice", "FROM");
+    message.setFieldValue("Bob", "TO");
+
+    expect(validateSequenceWorkspace(workspace)).toEqual([]);
+  });
+
+  it("warns once a referenced actor is removed", () => {
+    const alice = workspace.newBlock("sequence_actor");
+    alice.setFieldValue("Alice", "NAME");
+
+    const message = workspace.newBlock("sequence_message");
+    message.setFieldValue("Alice", "FROM");
+    message.setFieldValue("Alice", "TO");
+    expect(hasWarning(validateSequenceWorkspace(workspace), message)).toBe(false);
+
+    alice.dispose();
+    expect(hasWarning(validateSequenceWorkspace(workspace), message)).toBe(true);
+  });
+
   it("does not warn when references are valid", () => {
     const alice = workspace.newBlock("sequence_participant");
     alice.setFieldValue("Alice", "NAME");
