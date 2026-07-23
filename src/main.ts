@@ -19,6 +19,7 @@ import { stateToolbox } from "./blocks/state/toolbox";
 import { stateGenerator, stateWorkspaceToCode } from "./generators/stateGenerator";
 import { validateStateWorkspace } from "./blocks/state/validation";
 import { syncStateRename } from "./blocks/state/renameSync";
+import { applyStateAutoDefault } from "./blocks/state/autoDefault";
 import { installStateTransitionNoteRestriction } from "./blocks/state/noteRestriction";
 import { guardDuplicateRename, resolveDuplicateNamesOnCreate } from "./blocks/common/duplicateName";
 import { trackBlockCreate, isEligible } from "./blocks/common/autoDefaultTracking";
@@ -123,6 +124,7 @@ const diagramConfigs: DiagramConfig[] = [
     onValidate: validateStateWorkspace,
     onFieldChange: syncStateRename,
     nameOwnerTypes: new Set(["state_state", "state_composite", "state_choice"]),
+    autoDefaultOnConnect: applyStateAutoDefault,
     openImportDialog: (workspace) =>
       openImportDialog(workspace, {
         title: "Import PlantUML (State Diagram)",
