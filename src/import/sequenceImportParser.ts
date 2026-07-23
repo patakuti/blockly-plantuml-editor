@@ -14,16 +14,18 @@ import {
  * activityImportParser.ts: it only recognizes the syntax subset
  * sequenceGenerator.ts actually emits, not PlantUML's full grammar. There's
  * no separate grammar for "the participant declaration area" -- the source
- * is walked as a single flat, ordered list of nodes (participant/message/
- * alt/opt/loop/note/raw), exactly mirroring how sequenceGenerator.ts itself
- * just concatenates a participant-chain and a message-chain one after the
- * other. Splitting that flat list into the two chains is sequenceImportBuilder.ts's job.
+ * is walked as a single flat, ordered list of nodes (participant/actor/
+ * message/alt/opt/loop/note/raw), exactly mirroring how sequenceGenerator.ts
+ * itself just concatenates a participant/actor-chain and a message-chain one
+ * after the other. Splitting that flat list into the two chains is
+ * sequenceImportBuilder.ts's job.
  */
 
 export type { ImportedComment };
 
 export type SequenceImportedNode =
   | { kind: "participant"; name: string; comment?: ImportedComment }
+  | { kind: "actor"; name: string; comment?: ImportedComment }
   | { kind: "message"; from: string; to: string; text: string; comment?: ImportedComment }
   | {
       kind: "alt";
@@ -40,6 +42,7 @@ export type SequenceImportedNode =
 export { PlantUmlImportError };
 
 const PARTICIPANT = /^participant\s+"(.*)"$/i;
+const ACTOR = /^actor\s+"(.*)"$/i;
 const MESSAGE = /^"(.*)"\s*->\s*"(.*)":\s(.*)$/;
 const ALT = /^alt\s*\((.*)\)$/i;
 const ELSE = /^else\s*\((.*)\)$/i;
@@ -102,6 +105,12 @@ function parseOneStatement(cursor: LineCursor): SequenceImportedNode {
   if (participantMatch) {
     cursor.consumeTrimmed();
     return { kind: "participant", name: unescapeText(participantMatch[1]) };
+  }
+
+  const actorMatch = ACTOR.exec(trimmed);
+  if (actorMatch) {
+    cursor.consumeTrimmed();
+    return { kind: "actor", name: unescapeText(actorMatch[1]) };
   }
 
   const messageMatch = MESSAGE.exec(trimmed);

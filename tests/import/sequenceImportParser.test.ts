@@ -14,6 +14,15 @@ describe("parseSequencePlantUml", () => {
     ]);
   });
 
+  it("parses actor declarations, interleaved with participants (FR-SEQ-17)", () => {
+    const nodes = parseSequencePlantUml('@startuml\nactor "Alice"\nparticipant "Bob"\nactor "Carol"\n@enduml\n');
+    expect(nodes).toEqual([
+      { kind: "actor", name: "Alice" },
+      { kind: "participant", name: "Bob" },
+      { kind: "actor", name: "Carol" },
+    ]);
+  });
+
   it("ignores a wrapping ```plantuml Markdown code fence", () => {
     const source = '```plantuml\n@startuml\nparticipant "Alice"\n"Alice" -> "Alice": ping\n@enduml\n```\n';
     expect(parseSequencePlantUml(source)).toEqual([

@@ -1,12 +1,17 @@
 import * as Blockly from "blockly/core";
 import { generateStatements } from "./common/statementGenerator";
 import { escapeText, escapeQuotedName } from "./common/escape";
+import { PARTICIPANT_LIKE_TYPES } from "../blocks/sequence/constants";
 
 export const sequenceGenerator = new Blockly.CodeGenerator("PlantUMLSequence");
 
 sequenceGenerator.forBlock["sequence_participant"] = (block) => {
   const name = escapeQuotedName(block.getFieldValue("NAME"));
   return `participant "${name}"\n`;
+};
+sequenceGenerator.forBlock["sequence_actor"] = (block) => {
+  const name = escapeQuotedName(block.getFieldValue("NAME"));
+  return `actor "${name}"\n`;
 };
 sequenceGenerator.forBlock["sequence_message"] = (block) => {
   const from = escapeQuotedName(block.getFieldValue("FROM"));
@@ -47,29 +52,33 @@ sequenceGenerator.forBlock["sequence_raw_line"] = (block) => `${block.getFieldVa
 /**
  * Generates full PlantUML source for the sequence-diagram workspace.
  *
- * Participants chain together via PARTICIPANT_STATEMENT (02_design.md 12.11)
- * so they can be reordered by dragging like any other stack. There's no
+ * Participants/Actors (PARTICIPANT_LIKE_TYPES, 02_design.md 25.1) chain
+ * together via PARTICIPANT_STATEMENT (02_design.md 12.11) so they can be
+ * reordered by dragging like any other stack, freely mixed. There's no
  * single fixed anchor (unlike activity_start), so every top-level
- * sequence_participant chain head is walked via generateStatements() and the
- * results concatenated in top-block order (top-to-bottom); a participant
- * left disconnected from the others is still its own one-block chain and so
- * is never silently dropped. The message chain has no fixed anchor block
- * either, so the topmost non-participant statement block (message/alt/opt/
- * loop) is used as its chain head; any additional disconnected message
- * chains are not included (same class of known limitation as the
- * activity_start/stop chain-detachment case).
+ * participant/actor chain head is walked via generateStatements() and the
+ * results concatenated in top-block order (top-to-bottom); a participant or
+ * actor left disconnected from the others is still its own one-block chain
+ * and so is never silently dropped. The message chain has no fixed anchor
+ * block either, so the topmost non-participant/actor statement block
+ * (message/alt/opt/loop) is used as its chain head; any additional
+ * disconnected message chains are not included (same class of known
+ * limitation as the activity_start/stop chain-detachment case).
  */
 export function sequenceWorkspaceToCode(workspace: Blockly.Workspace): string {
   const participantsCode = workspace
     .getTopBlocks(true)
-    .filter((block) => block.type === "sequence_participant")
+    .filter((block) => (PARTICIPANT_LIKE_TYPES as readonly string[]).includes(block.type))
     .map((head) => generateStatements(sequenceGenerator, head))
     .join("");
 
   const firstStatement =
     workspace
       .getTopBlocks(true)
-      .find((block) => block.type !== "sequence_participant" && block.previousConnection !== null) ?? null;
+      .find(
+        (block) =>
+          !(PARTICIPANT_LIKE_TYPES as readonly string[]).includes(block.type) && block.previousConnection !== null,
+      ) ?? null;
   const messagesCode = generateStatements(sequenceGenerator, firstStatement);
 
   return `@startuml\n${participantsCode}${messagesCode}@enduml\n`;

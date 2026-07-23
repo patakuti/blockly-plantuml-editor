@@ -35,7 +35,7 @@ describe("nextAvailableName", () => {
 });
 
 describe("guardDuplicateRename (FR-SEQ-14/FR-STATE-10)", () => {
-  const SEQUENCE_OWNER_TYPES = new Set(["sequence_participant"]);
+  const SEQUENCE_OWNER_TYPES = new Set(["sequence_participant", "sequence_actor"]);
   const STATE_OWNER_TYPES = new Set(["state_state", "state_composite", "state_choice"]);
   let workspace: Blockly.Workspace;
 
@@ -79,6 +79,26 @@ describe("guardDuplicateRename (FR-SEQ-14/FR-STATE-10)", () => {
     expect(alice.getFieldValue("NAME")).toBe("Alicia");
   });
 
+  it("treats participant and actor as one shared namespace (FR-SEQ-17)", async () => {
+    workspace.addChangeListener((event) => {
+      if (event instanceof Blockly.Events.BlockChange && event.element === "field") {
+        guardDuplicateRename(workspace, event, SEQUENCE_OWNER_TYPES);
+      }
+    });
+
+    const alice = workspace.newBlock("sequence_participant");
+    alice.setFieldValue("Alice", "NAME");
+    await flushEvents();
+    const bob = workspace.newBlock("sequence_actor");
+    bob.setFieldValue("Bob", "NAME");
+    await flushEvents();
+
+    bob.setFieldValue("Alice", "NAME");
+    await flushEvents();
+
+    expect(bob.getFieldValue("NAME")).toBe("Bob");
+  });
+
   it("treats state, composite, and choice as one shared namespace", async () => {
     workspace.addChangeListener((event) => {
       if (event instanceof Blockly.Events.BlockChange && event.element === "field") {
@@ -118,7 +138,7 @@ describe("guardDuplicateRename (FR-SEQ-14/FR-STATE-10)", () => {
 });
 
 describe("resolveDuplicateNamesOnCreate (FR-SEQ-14/FR-STATE-10)", () => {
-  const SEQUENCE_OWNER_TYPES = new Set(["sequence_participant"]);
+  const SEQUENCE_OWNER_TYPES = new Set(["sequence_participant", "sequence_actor"]);
   let workspace: Blockly.Workspace;
 
   beforeEach(() => {
@@ -167,6 +187,19 @@ describe("resolveDuplicateNamesOnCreate (FR-SEQ-14/FR-STATE-10)", () => {
     expect(names).toContain("Participant");
     expect(names).toContain("Participant2");
     expect(names).toContain("Participant3");
+  });
+
+  it("auto-renames a newly created actor whose name collides with an existing participant", async () => {
+    const participant = workspace.newBlock("sequence_participant");
+    participant.setFieldValue("Alice", "NAME");
+    await flushEvents();
+
+    const actor = workspace.newBlock("sequence_actor");
+    actor.setFieldValue("Alice", "NAME");
+    await flushEvents();
+
+    expect(participant.getFieldValue("NAME")).toBe("Alice");
+    expect(actor.getFieldValue("NAME")).toBe("Alice2");
   });
 
   it("still converges to unique names when several colliding blocks are built in one synchronous batch (import-like)", async () => {

@@ -1,4 +1,5 @@
 import * as Blockly from "blockly/core";
+import { PARTICIPANT_LIKE_TYPES } from "./constants";
 
 /** Block types + field names that hold a participant name reference (FR-SEQ-07). */
 export const REFERENCE_FIELDS: Record<string, string[]> = {
@@ -29,7 +30,9 @@ export interface SequenceWarning {
 export function validateSequenceWorkspace(workspace: Blockly.Workspace): SequenceWarning[] {
   const warnings: SequenceWarning[] = [];
   const participantNames = new Set(
-    workspace.getBlocksByType("sequence_participant", false).map((b) => b.getFieldValue("NAME") as string),
+    PARTICIPANT_LIKE_TYPES.flatMap((type) => workspace.getBlocksByType(type, false)).map(
+      (b) => b.getFieldValue("NAME") as string,
+    ),
   );
 
   for (const [blockType, fields] of Object.entries(REFERENCE_FIELDS)) {

@@ -102,7 +102,7 @@ const diagramConfigs: DiagramConfig[] = [
     plantUmlFilename: "sequence-diagram.puml",
     onValidate: validateSequenceWorkspace,
     onFieldChange: syncParticipantRename,
-    nameOwnerTypes: new Set(["sequence_participant"]),
+    nameOwnerTypes: new Set(["sequence_participant", "sequence_actor"]),
     autoDefaultOnConnect: applySequenceAutoDefault,
     openImportDialog: (workspace) =>
       openImportDialog(workspace, {

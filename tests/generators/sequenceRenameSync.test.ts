@@ -56,6 +56,23 @@ describe("syncParticipantRename (FR-SEQ-13)", () => {
     expect(note.getFieldValue("TARGET")).toBe("Alicia");
   });
 
+  it("updates Message FROM/TO when the referenced actor is renamed (FR-SEQ-17)", async () => {
+    const alice = workspace.newBlock("sequence_actor");
+    alice.setFieldValue("Alice", "NAME");
+    const bob = workspace.newBlock("sequence_participant");
+    bob.setFieldValue("Bob", "NAME");
+
+    const message = workspace.newBlock("sequence_message");
+    message.setFieldValue("Alice", "FROM");
+    message.setFieldValue("Bob", "TO");
+
+    alice.setFieldValue("Alicia", "NAME");
+    await flushEvents();
+
+    expect(message.getFieldValue("FROM")).toBe("Alicia");
+    expect(message.getFieldValue("TO")).toBe("Bob");
+  });
+
   it("does not touch references to a different participant", async () => {
     const alice = workspace.newBlock("sequence_participant");
     alice.setFieldValue("Alice", "NAME");

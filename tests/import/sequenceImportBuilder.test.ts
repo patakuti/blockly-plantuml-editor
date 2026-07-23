@@ -36,3 +36,19 @@ describe("buildSequenceWorkspace dropdown display", () => {
     expect(note.getField("TARGET")!.getText()).toBe("Bob");
   });
 });
+
+describe("buildSequenceWorkspace actor (FR-SEQ-17)", () => {
+  it("builds a sequence_actor block from an actor node", () => {
+    const workspace = new Blockly.Workspace();
+    const text = '@startuml\nactor "Alice"\nparticipant "Bob"\n"Alice" -> "Bob": Hello\n@enduml';
+    buildSequenceWorkspace(workspace, parseSequencePlantUml(text));
+
+    const actors = workspace.getBlocksByType("sequence_actor", false);
+    expect(actors).toHaveLength(1);
+    expect(actors[0].getFieldValue("NAME")).toBe("Alice");
+
+    const message = workspace.getBlocksByType("sequence_message", false)[0];
+    expect(message.getFieldValue("FROM")).toBe("Alice");
+    expect(message.getField("FROM")!.getText()).toBe("Alice");
+  });
+});

@@ -2,6 +2,7 @@ import * as Blockly from "blockly/core";
 import { flattenChain } from "../common/statementOrder";
 import { setFieldValueRefreshingDropdown } from "../common/setDropdownFieldValue";
 import { consumeEligibility } from "../common/autoDefaultTracking";
+import { PARTICIPANT_LIKE_TYPES } from "./constants";
 
 /** Nested statement chains, in PlantUML output order, for Alt (DO0 + each ELSE_BODY_i)/Opt/Loop (DO). */
 function sequenceNestedHeads(block: Blockly.Block): (Blockly.Block | null)[] {
@@ -28,9 +29,10 @@ function messageChainHead(workspace: Blockly.Workspace): Blockly.Block | null {
 }
 
 function firstParticipantName(workspace: Blockly.Workspace): string | undefined {
-  return workspace.getBlocksByType("sequence_participant", true)[0]?.getFieldValue("NAME") as
-    | string
-    | undefined;
+  return workspace
+    .getAllBlocks(true)
+    .find((b) => (PARTICIPANT_LIKE_TYPES as readonly string[]).includes(b.type))
+    ?.getFieldValue("NAME") as string | undefined;
 }
 
 function applyParticipant(block: Blockly.Block, name: string): void {
@@ -52,7 +54,8 @@ function anyOtherMessageExists(workspace: Blockly.Workspace, block: Blockly.Bloc
  * makes its first connection, default FROM/TO (or TARGET) to the recipient
  * of the nearest preceding Message in PlantUML output order, searching
  * across Alt/Opt/Loop nesting. Falls back to the first declared Participant
- * only when this is confirmed to be the only Message in the whole workspace
+ * or Actor (02_design.md 25.8) only when this is confirmed to be the only
+ * Message in the whole workspace
  * -- this also fixes a pre-existing bug (02_design.md 24.7a) where a freshly
  * dropped sequence_message's FROM/TO stayed empty even with participants
  * already declared, because the dynamic dropdown's option cache is computed
