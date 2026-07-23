@@ -185,6 +185,34 @@ export function defineSequenceBlocks(): void {
     },
   };
 
+  Blockly.Blocks["sequence_activate"] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField("activate")
+        .appendField(new ParticipantDropdownField(participantOptions), "TARGET");
+      this.setPreviousStatement(true, SEQUENCE_STATEMENT);
+      this.setNextStatement(true, SEQUENCE_STATEMENT);
+      this.setColour(210);
+      this.setTooltip("Marks a participant's lifeline as activated, starting from here.");
+      // Unlike sequence_note (FR-SEQ-10), TARGET is intentionally left without an
+      // explicit default here: FR-SEQ-19/02_design.md 26.3 wants an unresolved
+      // Activate to stay unset (surfacing as a dangling-reference warning) rather
+      // than silently fall back to the first declared participant.
+    },
+  };
+
+  Blockly.Blocks["sequence_deactivate"] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField("deactivate")
+        .appendField(new ParticipantDropdownField(participantOptions), "TARGET");
+      this.setPreviousStatement(true, SEQUENCE_STATEMENT);
+      this.setNextStatement(true, SEQUENCE_STATEMENT);
+      this.setColour(210);
+      this.setTooltip("Marks a participant's lifeline as deactivated, ending here.");
+    },
+  };
+
   Blockly.Blocks["sequence_note"] = {
     init(this: Blockly.Block) {
       this.appendDummyInput()

@@ -306,6 +306,30 @@ describe("sequenceWorkspaceToCode", () => {
     expect(note.getField("TARGET")!.getText()).toBe("Alice");
   });
 
+  it("generates activate/deactivate for a declared participant", () => {
+    const alice = workspace.newBlock("sequence_participant");
+    alice.setFieldValue("Alice", "NAME");
+
+    const activate = workspace.newBlock("sequence_activate");
+    activate.setFieldValue("Alice", "TARGET");
+    const deactivate = workspace.newBlock("sequence_deactivate");
+    deactivate.setFieldValue("Alice", "TARGET");
+    activate.nextConnection!.connect(deactivate.previousConnection!);
+
+    expect(sequenceWorkspaceToCode(workspace)).toBe(
+      '@startuml\nparticipant "Alice"\nactivate "Alice"\ndeactivate "Alice"\n@enduml\n',
+    );
+  });
+
+  it("escapes quotes/@ in activate/deactivate TARGET", () => {
+    const activate = workspace.newBlock("sequence_activate");
+    activate.setFieldValue('Ali"ce @enduml', "TARGET");
+
+    expect(sequenceWorkspaceToCode(workspace)).toBe(
+      "@startuml\nactivate \"Ali'ce &#64;enduml\"\n@enduml\n",
+    );
+  });
+
   it("generates a raw line verbatim and unescaped", () => {
     const raw = workspace.newBlock("sequence_raw_line");
     raw.setFieldValue("autonumber @enduml", "TEXT");

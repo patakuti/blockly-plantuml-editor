@@ -41,6 +41,14 @@ sequenceGenerator.forBlock["sequence_loop"] = (block, generator) => {
   const body = generateStatements(generator, block.getInputTargetBlock("DO"));
   return `loop (${cond})\n${body}end\n`;
 };
+sequenceGenerator.forBlock["sequence_activate"] = (block) => {
+  const target = escapeQuotedName(block.getFieldValue("TARGET"));
+  return `activate "${target}"\n`;
+};
+sequenceGenerator.forBlock["sequence_deactivate"] = (block) => {
+  const target = escapeQuotedName(block.getFieldValue("TARGET"));
+  return `deactivate "${target}"\n`;
+};
 sequenceGenerator.forBlock["sequence_note"] = (block) => {
   const side = block.getFieldValue("SIDE");
   const target = escapeQuotedName(block.getFieldValue("TARGET"));

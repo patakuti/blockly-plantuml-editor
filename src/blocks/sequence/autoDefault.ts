@@ -19,12 +19,14 @@ function sequenceNestedHeads(block: Blockly.Block): (Blockly.Block | null)[] {
   return [];
 }
 
-/** Same "topmost non-participant statement" head search as sequenceGenerator.ts's sequenceWorkspaceToCode. */
+/** Same "topmost non-participant/actor statement" head search as sequenceGenerator.ts's sequenceWorkspaceToCode. */
 function messageChainHead(workspace: Blockly.Workspace): Blockly.Block | null {
   return (
     workspace
       .getTopBlocks(true)
-      .find((b) => b.type !== "sequence_participant" && b.previousConnection !== null) ?? null
+      .find(
+        (b) => !(PARTICIPANT_LIKE_TYPES as readonly string[]).includes(b.type) && b.previousConnection !== null,
+      ) ?? null
   );
 }
 
@@ -73,21 +75,46 @@ function anyOtherMessageExists(workspace: Blockly.Workspace, block: Blockly.Bloc
  * preceding Message instead of being stuck with an early guess.
  */
 export function applySequenceAutoDefault(workspace: Blockly.Workspace, block: Blockly.Block): void {
-  if (block.type !== "sequence_message" && block.type !== "sequence_note") return;
-
-  const ordered = flattenChain(messageChainHead(workspace), sequenceNestedHeads);
-  const index = ordered.indexOf(block);
-  for (let i = index - 1; i >= 0; i--) {
-    if (ordered[i].type === "sequence_message") {
-      applyParticipant(block, ordered[i].getFieldValue("TO") as string);
-      consumeEligibility(block.id);
-      return;
+  if (block.type === "sequence_message" || block.type === "sequence_note") {
+    const ordered = flattenChain(messageChainHead(workspace), sequenceNestedHeads);
+    const index = ordered.indexOf(block);
+    for (let i = index - 1; i >= 0; i--) {
+      if (ordered[i].type === "sequence_message") {
+        applyParticipant(block, ordered[i].getFieldValue("TO") as string);
+        consumeEligibility(block.id);
+        return;
+      }
     }
+
+    if (anyOtherMessageExists(workspace, block)) return; // inconclusive; stay eligible for a later connection
+
+    const first = firstParticipantName(workspace);
+    if (first !== undefined) applyParticipant(block, first);
+    consumeEligibility(block.id);
+    return;
   }
 
-  if (anyOtherMessageExists(workspace, block)) return; // inconclusive; stay eligible for a later connection
-
-  const first = firstParticipantName(workspace);
-  if (first !== undefined) applyParticipant(block, first);
-  consumeEligibility(block.id);
+  if (block.type === "sequence_activate" || block.type === "sequence_deactivate") {
+    // FR-SEQ-19/02_design.md 26.3 (revised): both Activate and Deactivate look
+    // backward for the nearest preceding Message -- matching the idiomatic
+    // PlantUML pattern of placing `activate X` right after the message that
+    // caused X to receive control, and `deactivate X` right after the message
+    // X sent to relinquish it. Activate takes that message's recipient (TO);
+    // Deactivate takes its sender (FROM). Unlike Message/Note above, there is
+    // no participant-first fallback -- if no such Message exists (yet) in
+    // this block's own chain, TARGET is left unset and eligibility stays
+    // unconsumed so a later reconnection into a real chain gets another
+    // chance to resolve it.
+    const ordered = flattenChain(messageChainHead(workspace), sequenceNestedHeads);
+    const index = ordered.indexOf(block);
+    const field = block.type === "sequence_activate" ? "TO" : "FROM";
+    for (let i = index - 1; i >= 0; i--) {
+      if (ordered[i].type === "sequence_message") {
+        setFieldValueRefreshingDropdown(block, "TARGET", ordered[i].getFieldValue(field) as string);
+        consumeEligibility(block.id);
+        return;
+      }
+    }
+    return;
+  }
 }

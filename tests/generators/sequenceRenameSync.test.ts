@@ -73,6 +73,22 @@ describe("syncParticipantRename (FR-SEQ-13)", () => {
     expect(message.getFieldValue("TO")).toBe("Bob");
   });
 
+  it("updates Activate/Deactivate TARGET when the referenced participant is renamed (FR-SEQ-18)", async () => {
+    const alice = workspace.newBlock("sequence_participant");
+    alice.setFieldValue("Alice", "NAME");
+
+    const activate = workspace.newBlock("sequence_activate");
+    activate.setFieldValue("Alice", "TARGET");
+    const deactivate = workspace.newBlock("sequence_deactivate");
+    deactivate.setFieldValue("Alice", "TARGET");
+
+    alice.setFieldValue("Alicia", "NAME");
+    await flushEvents();
+
+    expect(activate.getFieldValue("TARGET")).toBe("Alicia");
+    expect(deactivate.getFieldValue("TARGET")).toBe("Alicia");
+  });
+
   it("does not touch references to a different participant", async () => {
     const alice = workspace.newBlock("sequence_participant");
     alice.setFieldValue("Alice", "NAME");

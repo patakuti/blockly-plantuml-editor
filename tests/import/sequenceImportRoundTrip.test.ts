@@ -79,6 +79,13 @@ describe("sequence PlantUML import round-trip", () => {
     expect(roundTrip(text)).toBe(text);
   });
 
+  it("round-trips activate/deactivate (FR-SEQ-18)", () => {
+    const text =
+      '@startuml\nparticipant "Alice"\nparticipant "Bob"\n' +
+      '"Alice" -> "Bob": ping\nactivate "Bob"\n"Bob" -> "Alice": pong\ndeactivate "Bob"\n@enduml\n';
+    expect(roundTrip(text)).toBe(text);
+  });
+
   it("round-trips a comment attached via note-block form", () => {
     const text = '@startuml\nparticipant "Alice"\nparticipant "Bob"\n"Alice" -> "Bob": ping\nnote right\nremember this\nend note\n@enduml\n';
     expect(roundTrip(text)).toBe(text);

@@ -37,6 +37,8 @@ export type SequenceImportedNode =
   | { kind: "opt"; cond: string; body: SequenceImportedNode[]; comment?: ImportedComment }
   | { kind: "loop"; cond: string; body: SequenceImportedNode[]; comment?: ImportedComment }
   | { kind: "note"; side: "left" | "right"; target: string; text: string; comment?: ImportedComment }
+  | { kind: "activate"; target: string; comment?: ImportedComment }
+  | { kind: "deactivate"; target: string; comment?: ImportedComment }
   | { kind: "raw"; text: string; comment?: ImportedComment };
 
 export { PlantUmlImportError };
@@ -50,6 +52,8 @@ const OPT = /^opt\s*\((.*)\)$/i;
 const LOOP = /^loop\s*\((.*)\)$/i;
 const END = /^end$/i;
 const NOTE_OF = /^note\s+(left|right)\s+of\s+"(.*)":\s(.*)$/i;
+const ACTIVATE = /^activate\s+"(.*)"$/i;
+const DEACTIVATE = /^deactivate\s+"(.*)"$/i;
 
 /**
  * Consumes lines until `isTerminator` matches the next line (which is left
@@ -122,6 +126,18 @@ function parseOneStatement(cursor: LineCursor): SequenceImportedNode {
       to: unescapeText(messageMatch[2]),
       text: unescapeText(messageMatch[3]),
     };
+  }
+
+  const activateMatch = ACTIVATE.exec(trimmed);
+  if (activateMatch) {
+    cursor.consumeTrimmed();
+    return { kind: "activate", target: unescapeText(activateMatch[1]) };
+  }
+
+  const deactivateMatch = DEACTIVATE.exec(trimmed);
+  if (deactivateMatch) {
+    cursor.consumeTrimmed();
+    return { kind: "deactivate", target: unescapeText(deactivateMatch[1]) };
   }
 
   const altMatch = ALT.exec(trimmed);

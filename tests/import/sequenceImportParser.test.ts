@@ -100,6 +100,28 @@ describe("parseSequencePlantUml", () => {
     ]);
   });
 
+  it("parses activate/deactivate (FR-SEQ-18)", () => {
+    const nodes = parseSequencePlantUml('activate "Alice"\ndeactivate "Alice"\n');
+    expect(nodes).toEqual([
+      { kind: "activate", target: "Alice" },
+      { kind: "deactivate", target: "Alice" },
+    ]);
+  });
+
+  it("does not confuse deactivate with the alt/opt/loop end terminator", () => {
+    const nodes = parseSequencePlantUml('opt (maybe)\n"Alice" -> "Bob": ping\ndeactivate "Bob"\nend\n');
+    expect(nodes).toEqual([
+      {
+        kind: "opt",
+        cond: "maybe",
+        body: [
+          { kind: "message", from: "Alice", to: "Bob", text: "ping" },
+          { kind: "deactivate", target: "Bob" },
+        ],
+      },
+    ]);
+  });
+
   it("parses a one-line note (note left/right of X: text)", () => {
     const nodes = parseSequencePlantUml('note left of "Alice": remember this\n');
     expect(nodes).toEqual([{ kind: "note", side: "left", target: "Alice", text: "remember this" }]);

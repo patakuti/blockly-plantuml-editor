@@ -33,6 +33,14 @@ export const sequenceToolbox: Blockly.utils.toolbox.ToolboxInfo = {
     },
     {
       kind: "block",
+      type: "sequence_activate",
+    },
+    {
+      kind: "block",
+      type: "sequence_deactivate",
+    },
+    {
+      kind: "block",
       type: "sequence_raw_line",
     },
   ],

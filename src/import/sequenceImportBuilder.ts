@@ -115,6 +115,18 @@ function createBlockForNode(workspace: Blockly.Workspace, node: SequenceImported
       return block;
     }
 
+    case "activate": {
+      const block = workspace.newBlock("sequence_activate");
+      setFieldValueRefreshingDropdown(block, "TARGET", node.target);
+      return block;
+    }
+
+    case "deactivate": {
+      const block = workspace.newBlock("sequence_deactivate");
+      setFieldValueRefreshingDropdown(block, "TARGET", node.target);
+      return block;
+    }
+
     case "raw": {
       const block = workspace.newBlock("sequence_raw_line");
       block.setFieldValue(node.text, "TEXT");
