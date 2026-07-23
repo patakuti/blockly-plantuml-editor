@@ -5,6 +5,8 @@ import { PARTICIPANT_LIKE_TYPES } from "./constants";
 export const REFERENCE_FIELDS: Record<string, string[]> = {
   sequence_message: ["FROM", "TO"],
   sequence_note: ["TARGET"],
+  sequence_activate: ["TARGET"],
+  sequence_deactivate: ["TARGET"],
 };
 
 /** Block types that nest and count toward readability depth (FR-SEQ-09). */

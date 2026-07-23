@@ -88,6 +88,34 @@ describe("validateSequenceWorkspace", () => {
     expect(validateSequenceWorkspace(workspace)).toEqual([]);
   });
 
+  it("warns on activate/deactivate targeting a participant that doesn't exist (FR-SEQ-18)", () => {
+    const activate = workspace.newBlock("sequence_activate");
+    activate.setFieldValue("Ghost", "TARGET");
+    const deactivate = workspace.newBlock("sequence_deactivate");
+    deactivate.setFieldValue("Ghost", "TARGET");
+
+    const warnings = validateSequenceWorkspace(workspace);
+    expect(hasWarning(warnings, activate)).toBe(true);
+    expect(hasWarning(warnings, deactivate)).toBe(true);
+  });
+
+  it("does not warn on activate/deactivate targeting an existing participant", () => {
+    const alice = workspace.newBlock("sequence_participant");
+    alice.setFieldValue("Alice", "NAME");
+    const activate = workspace.newBlock("sequence_activate");
+    activate.setFieldValue("Alice", "TARGET");
+    const deactivate = workspace.newBlock("sequence_deactivate");
+    deactivate.setFieldValue("Alice", "TARGET");
+
+    expect(validateSequenceWorkspace(workspace)).toEqual([]);
+  });
+
+  it("warns on activate/deactivate with an unset TARGET (empty string)", () => {
+    const activate = workspace.newBlock("sequence_activate");
+
+    expect(hasWarning(validateSequenceWorkspace(workspace), activate)).toBe(true);
+  });
+
   it("warns when alt/opt/loop nesting exceeds the readability threshold (FR-SEQ-09)", () => {
     const outer = workspace.newBlock("sequence_alt");
     const level2 = workspace.newBlock("sequence_opt");

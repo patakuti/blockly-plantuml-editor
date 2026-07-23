@@ -37,6 +37,24 @@ describe("buildSequenceWorkspace dropdown display", () => {
   });
 });
 
+describe("buildSequenceWorkspace activate/deactivate (FR-SEQ-18)", () => {
+  it("builds sequence_activate/sequence_deactivate blocks from activate/deactivate nodes", () => {
+    const workspace = new Blockly.Workspace();
+    const text =
+      '@startuml\nparticipant "Alice"\nparticipant "Bob"\n' +
+      '"Alice" -> "Bob": Hello\nactivate "Bob"\n"Bob" -> "Alice": Hi\ndeactivate "Bob"\n@enduml';
+    buildSequenceWorkspace(workspace, parseSequencePlantUml(text));
+
+    const activate = workspace.getBlocksByType("sequence_activate", false)[0];
+    expect(activate.getFieldValue("TARGET")).toBe("Bob");
+    expect(activate.getField("TARGET")!.getText()).toBe("Bob");
+
+    const deactivate = workspace.getBlocksByType("sequence_deactivate", false)[0];
+    expect(deactivate.getFieldValue("TARGET")).toBe("Bob");
+    expect(deactivate.getField("TARGET")!.getText()).toBe("Bob");
+  });
+});
+
 describe("buildSequenceWorkspace actor (FR-SEQ-17)", () => {
   it("builds a sequence_actor block from an actor node", () => {
     const workspace = new Blockly.Workspace();

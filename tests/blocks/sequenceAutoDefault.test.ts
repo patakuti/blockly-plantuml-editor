@@ -102,6 +102,23 @@ describe("applySequenceAutoDefault (FR-SEQ-15/16)", () => {
     expect(note.getFieldValue("TARGET")).toBe("Bob");
   });
 
+  it("finds the preceding Message even when a declared Actor sorts ahead of the message chain head (regression: messageChainHead previously excluded only sequence_participant, not sequence_actor)", async () => {
+    const carol = actor(workspace, "Carol"); // left at (0,0): sorts first by workspace position
+    participant(workspace, "Alice");
+    const m1 = message(workspace, "Alice", "Carol");
+    m1.moveBy(0, 100); // pushed below the declaration chain so it isn't the topmost block by position
+    registerIneligible([m1.id]);
+    await flushEvents();
+
+    const m2 = workspace.newBlock("sequence_message");
+    m1.nextConnection!.connect(m2.previousConnection!);
+    await flushEvents();
+
+    expect(m2.getFieldValue("FROM")).toBe("Carol");
+    expect(m2.getFieldValue("TO")).toBe("Carol");
+    expect(carol.getFieldValue("NAME")).toBe("Carol"); // sanity: carol is indeed the Actor, not touched
+  });
+
   it("finds the preceding Message across a Loop's nested body", async () => {
     participant(workspace, "Alice");
     participant(workspace, "Bob");
@@ -275,5 +292,118 @@ describe("applySequenceAutoDefault (FR-SEQ-15/16)", () => {
 
     expect(m2.getFieldValue("FROM")).toBe("Alice");
     expect(m2.getFieldValue("TO")).toBe("Alice");
+  });
+});
+
+describe("applySequenceAutoDefault - Activate/Deactivate (FR-SEQ-19)", () => {
+  let workspace: Blockly.Workspace;
+
+  beforeEach(() => {
+    workspace = new Blockly.Workspace();
+    installAutoDefaultWiring(workspace);
+  });
+
+  it("defaults a new Activate's TARGET to the recipient of the preceding Message", async () => {
+    participant(workspace, "Alice");
+    participant(workspace, "Bob");
+    const m1 = message(workspace, "Alice", "Bob");
+    await flushEvents();
+
+    const activate = workspace.newBlock("sequence_activate");
+    m1.nextConnection!.connect(activate.previousConnection!);
+    await flushEvents();
+
+    expect(activate.getFieldValue("TARGET")).toBe("Bob");
+  });
+
+  it("defaults a new Deactivate's TARGET to the sender of the preceding Message", async () => {
+    participant(workspace, "Alice");
+    participant(workspace, "Bob");
+    const m1 = message(workspace, "Alice", "Bob");
+    await flushEvents();
+
+    const deactivate = workspace.newBlock("sequence_deactivate");
+    m1.nextConnection!.connect(deactivate.previousConnection!);
+    await flushEvents();
+
+    expect(deactivate.getFieldValue("TARGET")).toBe("Alice");
+  });
+
+  it("finds the preceding Message for Activate across a Loop's nested body", async () => {
+    participant(workspace, "Alice");
+    participant(workspace, "Bob");
+    const loop = workspace.newBlock("sequence_loop");
+    const inner = message(workspace, "Alice", "Bob");
+    registerIneligible([inner.id]); // fixture, not the block under test (see above)
+    loop.getInput("DO")!.connection!.connect(inner.previousConnection!);
+    await flushEvents();
+
+    const activate = workspace.newBlock("sequence_activate");
+    loop.nextConnection!.connect(activate.previousConnection!);
+    await flushEvents();
+
+    expect(activate.getFieldValue("TARGET")).toBe("Bob");
+  });
+
+  it("finds the preceding Message for Deactivate across a Loop's nested body", async () => {
+    participant(workspace, "Alice");
+    participant(workspace, "Bob");
+    const loop = workspace.newBlock("sequence_loop");
+    const inner = message(workspace, "Alice", "Bob");
+    registerIneligible([inner.id]); // fixture, not the block under test (see above)
+    loop.getInput("DO")!.connection!.connect(inner.previousConnection!);
+    await flushEvents();
+
+    const deactivate = workspace.newBlock("sequence_deactivate");
+    loop.nextConnection!.connect(deactivate.previousConnection!);
+    await flushEvents();
+
+    expect(deactivate.getFieldValue("TARGET")).toBe("Alice");
+  });
+
+  it("leaves TARGET unset (no fallback) when no preceding Message exists for Activate, and stays eligible", async () => {
+    participant(workspace, "Alice");
+    await flushEvents();
+
+    const activate = workspace.newBlock("sequence_activate");
+    await flushEvents();
+    firePositionOnlyMove(activate);
+    await flushEvents();
+
+    expect(activate.getFieldValue("TARGET")).toBe("");
+    expect(isEligible(activate.id)).toBe(true);
+  });
+
+  it("leaves TARGET unset (no fallback) when no preceding Message exists for Deactivate, and stays eligible", async () => {
+    participant(workspace, "Alice");
+    await flushEvents();
+
+    const deactivate = workspace.newBlock("sequence_deactivate");
+    await flushEvents();
+    firePositionOnlyMove(deactivate);
+    await flushEvents();
+
+    expect(deactivate.getFieldValue("TARGET")).toBe("");
+    expect(isEligible(deactivate.id)).toBe(true);
+  });
+
+  it("resolves once a previously-pending Activate is connected after a real Message", async () => {
+    participant(workspace, "Alice");
+    participant(workspace, "Bob");
+    await flushEvents();
+
+    const activate = workspace.newBlock("sequence_activate");
+    await flushEvents();
+    firePositionOnlyMove(activate); // dropped standalone first; stays pending
+    await flushEvents();
+    expect(activate.getFieldValue("TARGET")).toBe("");
+
+    const m1 = message(workspace, "Alice", "Bob");
+    registerIneligible([m1.id]); // fixture, not the block under test (see above)
+    m1.nextConnection!.connect(activate.previousConnection!);
+    await flushEvents();
+
+    expect(activate.getFieldValue("TARGET")).toBe("Bob");
+    expect(isEligible(activate.id)).toBe(false);
   });
 });

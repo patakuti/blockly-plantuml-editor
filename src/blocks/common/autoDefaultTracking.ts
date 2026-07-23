@@ -65,9 +65,20 @@ export function consumeEligibility(blockId: string): void {
 }
 
 /**
- * Forgets `ids` entirely, as if their blocks had never been seen. Call
- * synchronously from the app's own block-deletion code path right before
- * disposing the blocks (02_design.md 24.4/24.11).
+ * Forgets `ids` entirely, as if their blocks had never been seen.
+ *
+ * Called generically from `main.ts`'s shared change listener on every
+ * `Blockly.Events.BlockDelete` (`event.ids`, which -- like `BlockCreate`'s --
+ * covers the whole deleted block-plus-descendants range in one event,
+ * 02_design.md 26.3c), rather than from each individual deletion code path.
+ * This covers every way a block can be removed -- the right-click/keyboard
+ * delete (`deleteBlockAndChain` below), dragging a block onto the toolbox
+ * (Blockly's own built-in delete-by-drag gesture, which never went through
+ * `deleteBlockAndChain` at all), and every `workspace.clear()` call site
+ * (the toolbar's Clear button, JSON import, PlantUML import for all three
+ * diagram types) -- with a single mechanism instead of needing a matching
+ * call at each one (02_design.md 24.11/26.3b's per-call-site approach missed
+ * the drag-to-toolbox gesture entirely).
  *
  * Confirmed live in the browser: deleting a block and then dragging a new
  * one out of the *same* toolbox flyout slot can hand the new block the
