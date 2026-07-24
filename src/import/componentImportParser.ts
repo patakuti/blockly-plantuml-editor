@@ -14,6 +14,7 @@ import { LineCursor, PlantUmlImportError, preprocessPlantUmlSource } from "./com
 export type ComponentImportedNode =
   | { kind: "component"; name: string; body: ComponentImportedNode[] }
   | { kind: "dependency"; from: string; to: string; text?: string }
+  | { kind: "style"; value: "rectangle" | "uml1" | "uml2" }
   | { kind: "raw"; text: string };
 
 export { PlantUmlImportError };
@@ -21,6 +22,7 @@ export { PlantUmlImportError };
 const COMPONENT_OPEN = /^component\s+"(.*)"\s*\{$/i;
 const COMPONENT_END = /^\}$/;
 const DEPENDENCY = /^"(.*)"\s*-->\s*"(.*)"(?:\s*:\s*(.*))?$/;
+const COMPONENT_STYLE = /^skinparam componentStyle (rectangle|uml1|uml2)$/;
 
 /**
  * Consumes lines until `isTerminator` matches the next line (which is left
@@ -76,6 +78,12 @@ function parseOneStatement(cursor: LineCursor): ComponentImportedNode {
     return text !== undefined
       ? { kind: "dependency", from, to, text: unescapeText(text) }
       : { kind: "dependency", from, to };
+  }
+
+  const styleMatch = COMPONENT_STYLE.exec(trimmed);
+  if (styleMatch) {
+    cursor.consumeTrimmed();
+    return { kind: "style", value: styleMatch[1] as "rectangle" | "uml1" | "uml2" };
   }
 
   // Unrecognized line: preserved verbatim rather than dropped (FR-COMP-IMPORT-03).

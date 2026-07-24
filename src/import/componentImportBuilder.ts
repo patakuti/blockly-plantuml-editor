@@ -142,6 +142,12 @@ function createBlockForNode(
       return block;
     }
 
+    case "style": {
+      const block = workspace.newBlock("component_style");
+      block.setFieldValue(node.value, "STYLE");
+      return block;
+    }
+
     case "raw": {
       const block = workspace.newBlock("component_raw_line");
       block.setFieldValue(node.text, "TEXT");
