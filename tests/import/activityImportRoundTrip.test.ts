@@ -14,6 +14,13 @@ function roundTrip(plantUml: string): string {
   return activityWorkspaceToCode(workspace);
 }
 
+/** Same as roundTrip, but returns the built workspace itself so tests can inspect its block structure, not just the regenerated text. */
+function buildWorkspace(plantUml: string): Blockly.Workspace {
+  const workspace = new Blockly.Workspace();
+  buildActivityWorkspace(workspace, parseActivityPlantUml(plantUml));
+  return workspace;
+}
+
 describe("activity PlantUML import round-trip", () => {
   it("round-trips start/stop with no actions", () => {
     const text = "@startuml\nstart\nstop\n@enduml\n";
@@ -90,6 +97,39 @@ describe("activity PlantUML import round-trip", () => {
   it("round-trips swimlane switches without a start pin", () => {
     const text = "@startuml\n|A|\n|B|\nstart\n|A|\n:a1;\n|B|\n:b1;\nstop\n@enduml\n";
     expect(roundTrip(text)).toBe(text);
+  });
+
+  /**
+   * 02_design.md 32.2: before this fix, activity_start's missing
+   * previousStatement broke the hoisted preamble's connection into the main
+   * chain, leaving it as an orphaned, disconnected pair of Swimlane blocks
+   * that never showed up in the regenerated text but did clutter the
+   * canvas. Asserting the exact block count (not just the regenerated text,
+   * which happened to match even with the bug present) is what actually
+   * catches this.
+   */
+  it("does not leave orphaned Swimlane blocks behind after importing a hoisted preamble", () => {
+    const text = "@startuml\n|A|\n|B|\nstart\n|A|\n:a1;\n|B|\n:b1;\nstop\n@enduml\n";
+    const workspace = buildWorkspace(text);
+    expect(workspace.getBlocksByType("activity_swimlane", false)).toHaveLength(2);
+    expect(workspace.getTopBlocks(true)).toHaveLength(1);
+  });
+
+  it("round-trips a pinned start swimlane, restoring the SWIMLANE dropdown value", () => {
+    const text = "@startuml\n|A|\n|B|\n|B|\nstart\n|A|\n:a1;\n|B|\n:b1;\nstop\n@enduml\n";
+    expect(roundTrip(text)).toBe(text);
+
+    const workspace = buildWorkspace(text);
+    const [start] = workspace.getBlocksByType("activity_start", false);
+    expect(start.getFieldValue("SWIMLANE")).toBe("B");
+    // Also checks the dropdown's *displayed* text, not just its underlying
+    // value: setting the value alone (via a plain setFieldValue at the
+    // start block's own creation time, before the referenced Swimlane
+    // block exists) was found, via manual browser testing, to leave the
+    // on-screen label stuck on "(auto)" even though the value and the
+    // regenerated PlantUML were already correct (02_design.md 32.5).
+    expect(start.getField("SWIMLANE")!.getText()).toBe("B");
+    expect(workspace.getBlocksByType("activity_swimlane", false)).toHaveLength(2);
   });
 
   it("round-trips a block comment as a PlantUML note", () => {

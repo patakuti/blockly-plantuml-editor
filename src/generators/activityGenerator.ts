@@ -52,18 +52,25 @@ activityGenerator.forBlock["activity_swimlane"] = (block) => {
 activityGenerator.forBlock["activity_raw_line"] = (block) => `${block.getFieldValue("TEXT")}\n`;
 
 /**
- * Generates full PlantUML source for the activity-diagram workspace.
+ * Picks the single top-level chain activityWorkspaceToCode generates from.
  * start/stop are optional (FR-ACT-01), so the workspace can contain several
  * disconnected top-level chains. Exactly one is picked as the output chain
  * (02_design.md 14.2): prefer the chain headed by an `activity_start` block
  * (position order breaks ties if more than one exists -- see
  * validateActivityWorkspace for the accompanying warning); otherwise fall
  * back to the first top block in position order, whatever its type. Other
- * chains are dropped entirely, not just their unreachable tail.
+ * chains are dropped entirely, not just their unreachable tail -- also used
+ * by validateActivityWorkspace (02_design.md 32.6) to flag Swimlane blocks
+ * that fall outside this chain and so never make it into the output.
  */
-export function activityWorkspaceToCode(workspace: Blockly.Workspace): string {
+export function pickActivityOutputChainHead(workspace: Blockly.Workspace): Blockly.Block | null {
   const topBlocks = workspace.getTopBlocks(true);
-  const headBlock = topBlocks.find((block) => block.type === "activity_start") ?? topBlocks[0] ?? null;
+  return topBlocks.find((block) => block.type === "activity_start") ?? topBlocks[0] ?? null;
+}
+
+/** Generates full PlantUML source for the activity-diagram workspace. */
+export function activityWorkspaceToCode(workspace: Blockly.Workspace): string {
+  const headBlock = pickActivityOutputChainHead(workspace);
   const body = generateStatements(activityGenerator, headBlock);
   const pinnedLane =
     headBlock?.type === "activity_start" ? ((headBlock.getFieldValue("SWIMLANE") as string) || null) : null;

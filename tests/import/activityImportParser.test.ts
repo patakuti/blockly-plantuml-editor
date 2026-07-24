@@ -149,6 +149,72 @@ describe("parseActivityPlantUml", () => {
     ]);
   });
 
+  /**
+   * 02_design.md 32.2/32.3: activityGenerator.ts's hoistSwimlaneDeclarations
+   * always emits a leading run of `|Name|` declarations right after
+   * @startuml. Without stripHoistedPreamble, these would be parsed as
+   * ordinary swimlane nodes and end up as orphaned blocks on import (since
+   * activity_start has no previousStatement for them to chain into).
+   */
+  it("strips a hoisted no-pin preamble that exactly matches the real usage order", () => {
+    const source = "|A|\n|B|\nstart\n|A|\n:a1;\n|B|\n:b1;\nstop";
+    expect(parseActivityPlantUml(source)).toEqual([
+      { kind: "start" },
+      { kind: "swimlane", name: "A" },
+      { kind: "action", text: "a1" },
+      { kind: "swimlane", name: "B" },
+      { kind: "action", text: "b1" },
+      { kind: "stop" },
+    ]);
+  });
+
+  it("recovers a pinned swimlane from a hoisted preamble with a trailing duplicate", () => {
+    const source = "|A|\n|B|\n|B|\nstart\n|A|\n:a1;\n|B|\n:b1;\nstop";
+    expect(parseActivityPlantUml(source)).toEqual([
+      { kind: "start", pinnedSwimlane: "B" },
+      { kind: "swimlane", name: "A" },
+      { kind: "action", text: "a1" },
+      { kind: "swimlane", name: "B" },
+      { kind: "action", text: "b1" },
+      { kind: "stop" },
+    ]);
+  });
+
+  it("recovers a pinned swimlane that's never otherwise used in the body", () => {
+    const source = "|A|\n|C|\nstart\n|A|\n:a1;\nstop";
+    expect(parseActivityPlantUml(source)).toEqual([
+      { kind: "start", pinnedSwimlane: "C" },
+      { kind: "swimlane", name: "A" },
+      { kind: "action", text: "a1" },
+      { kind: "stop" },
+    ]);
+  });
+
+  it("strips a hoisted preamble even without a start block (FR-ACT-01)", () => {
+    const source = "|A|\n|B|\n|A|\n:a1;\n|B|\n:b1;";
+    expect(parseActivityPlantUml(source)).toEqual([
+      { kind: "swimlane", name: "A" },
+      { kind: "action", text: "a1" },
+      { kind: "swimlane", name: "B" },
+      { kind: "action", text: "b1" },
+    ]);
+  });
+
+  it("leaves leading declarations alone when neither name is used anywhere later (not this tool's own hoist shape)", () => {
+    // Real generator output can never have two-or-more leading names with zero
+    // later usage (`order` only ever contains actually-used names, and at
+    // most one extra pin name can be appended), so this shape only arises
+    // from hand-written/foreign PlantUML -- left untouched (02_design.md 32.3).
+    const source = "|A|\n|B|\nstart\n:a1;\nstop";
+    expect(parseActivityPlantUml(source)).toEqual([
+      { kind: "swimlane", name: "A" },
+      { kind: "swimlane", name: "B" },
+      { kind: "start" },
+      { kind: "action", text: "a1" },
+      { kind: "stop" },
+    ]);
+  });
+
   it("attaches a note to the immediately preceding statement", () => {
     const source = ":Do something;\nnote right\na helpful note\nend note";
     expect(parseActivityPlantUml(source)).toEqual([
