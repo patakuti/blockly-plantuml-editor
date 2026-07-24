@@ -6,6 +6,16 @@ import { defineStateRegionMutator } from "./regionMutator";
 const PSEUDOSTATE = "[*]";
 
 /**
+ * Matches a space or a `"` (FR-STATE-12/13). State/Composite State/Choice
+ * names are emitted as bare, unquoted PlantUML identifiers (`state Name`),
+ * unlike Sequence/Component's always-quoted names -- either character breaks
+ * PlantUML's state-diagram parser outright (verified against a local
+ * PlantUML render, 02_design.md 35.1). Exported so blocks/state/validation.ts
+ * can flag the same condition without duplicating the pattern.
+ */
+export const INVALID_STATE_NAME_PATTERN = /[ "]/;
+
+/**
  * Scans the workspace for declared states (state_state, state_composite,
  * and state_choice -- all of which can be a transition endpoint) plus the
  * pseudostate marker, and returns them as dropdown options for Transition's
@@ -40,66 +50,68 @@ class StateDropdownField extends Blockly.FieldDropdown {
   }
 }
 
+/**
+ * State/Composite State/Choice's NAME field (FR-STATE-12). Shows a red
+ * outline on the live editor input while it currently contains a space or a
+ * `"`, without ever rejecting or rolling back the value itself -- Blockly's
+ * standard validator-returns-null rollback mechanism also fires on
+ * programmatic setFieldValue (JSON restore, PlantUML import, undo/redo), so
+ * using it here would silently rewrite a name that was saved before this
+ * validation existed (02_design.md 35.2). The persistent, always-visible
+ * counterpart (surviving after the field is no longer being edited) is
+ * blocks/state/validation.ts's warning icon (FR-STATE-13).
+ */
+class StateNameField extends Blockly.FieldTextInput {
+  protected override bindInputEvents_(htmlInput: HTMLInputElement): void {
+    super.bindInputEvents_(htmlInput);
+    htmlInput.addEventListener("input", () => this.updateInvalidStyle_());
+    this.updateInvalidStyle_();
+  }
+
+  private updateInvalidStyle_(): void {
+    this.htmlInput_?.classList.toggle("blocklyInvalidNameInput", INVALID_STATE_NAME_PATTERN.test(this.htmlInput_.value));
+  }
+}
+
 export function defineStateBlocks(): void {
   defineStateRegionMutator();
 
-  Blockly.defineBlocksWithJsonArray([
-    {
-      type: "state_state",
-      message0: "state %1",
-      args0: [
-        {
-          type: "field_input",
-          name: "NAME",
-          text: "State1",
-        },
-      ],
-      previousStatement: STATE_STATEMENT,
-      nextStatement: STATE_STATEMENT,
-      colour: 160,
-      tooltip: "Declares a state.",
+  Blockly.Blocks["state_state"] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput().appendField("state").appendField(new StateNameField("State1"), "NAME");
+      this.setPreviousStatement(true, STATE_STATEMENT);
+      this.setNextStatement(true, STATE_STATEMENT);
+      this.setColour(160);
+      this.setTooltip("Declares a state.");
     },
-    {
-      type: "state_choice",
-      message0: "choice %1",
-      args0: [
-        {
-          type: "field_input",
-          name: "NAME",
-          text: "Choice1",
-        },
-      ],
-      previousStatement: STATE_STATEMENT,
-      nextStatement: STATE_STATEMENT,
-      colour: 160,
-      tooltip: "Declares a choice pseudostate (a branch point). Connect transitions in and out just like a regular state.",
+  };
+
+  Blockly.Blocks["state_choice"] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput().appendField("choice").appendField(new StateNameField("Choice1"), "NAME");
+      this.setPreviousStatement(true, STATE_STATEMENT);
+      this.setNextStatement(true, STATE_STATEMENT);
+      this.setColour(160);
+      this.setTooltip("Declares a choice pseudostate (a branch point). Connect transitions in and out just like a regular state.");
     },
-    {
-      type: "state_composite",
-      message0: "state %1",
-      args0: [
-        {
-          type: "field_input",
-          name: "NAME",
-          text: "Composite",
-        },
-      ],
-      message1: "%1",
-      args1: [
-        {
-          type: "input_statement",
-          name: "DO",
-          check: STATE_STATEMENT,
-        },
-      ],
-      previousStatement: STATE_STATEMENT,
-      nextStatement: STATE_STATEMENT,
-      colour: 290,
-      tooltip:
+  };
+
+  Blockly.Blocks["state_composite"] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput().appendField("state").appendField(new StateNameField("Composite"), "NAME");
+      this.appendStatementInput("DO").setCheck(STATE_STATEMENT);
+      this.setPreviousStatement(true, STATE_STATEMENT);
+      this.setNextStatement(true, STATE_STATEMENT);
+      this.setColour(290);
+      this.setTooltip(
         "Groups a sequence of states/transitions as a nested (composite) state. Nestable. " +
-        "Use the gear icon to add concurrent regions (separated by \"--\").",
-      mutator: "state_region_mutator",
+          "Use the gear icon to add concurrent regions (separated by \"--\").",
+      );
+      Blockly.Extensions.apply("state_region_mutator", this, true);
     },
+  };
+
+  Blockly.defineBlocksWithJsonArray([
     {
       type: "state_raw_line",
       message0: "raw %1",
