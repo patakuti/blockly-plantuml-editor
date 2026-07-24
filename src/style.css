@@ -151,3 +151,8 @@ body,
   gap: 8px;
   justify-content: flex-end;
 }
+
+.blocklyInvalidNameInput {
+  outline: 2px solid #d32f2f !important;
+  background-color: #fdecea !important;
+}

@@ -226,4 +226,45 @@ describe("validateStateWorkspace", () => {
 
     expect(validateStateWorkspace(workspace)).toEqual([]);
   });
+
+  describe("NAME containing a space or a double quote (FR-STATE-13)", () => {
+    it.each([
+      ["state_state", "My State"],
+      ["state_choice", "My Choice"],
+      ["state_composite", "My Composite"],
+    ])("warns on a %s name containing a space", (blockType, name) => {
+      const block = workspace.newBlock(blockType);
+      block.setFieldValue(name, "NAME");
+
+      const warnings = validateStateWorkspace(workspace);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0].blockId).toBe(block.id);
+      expect(warnings[0].message).toContain(name);
+    });
+
+    it("warns on a name containing a double quote", () => {
+      const state = workspace.newBlock("state_state");
+      state.setFieldValue('My"State', "NAME");
+
+      const warnings = validateStateWorkspace(workspace);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0].blockId).toBe(state.id);
+    });
+
+    it("does not warn on a name with neither a space nor a double quote", () => {
+      const state = workspace.newBlock("state_state");
+      state.setFieldValue("MyState", "NAME");
+
+      expect(validateStateWorkspace(workspace)).toEqual([]);
+    });
+
+    it("clears the warning once the name is fixed", () => {
+      const state = workspace.newBlock("state_state");
+      state.setFieldValue("My State", "NAME");
+      expect(validateStateWorkspace(workspace)).toHaveLength(1);
+
+      state.setFieldValue("MyState", "NAME");
+      expect(validateStateWorkspace(workspace)).toEqual([]);
+    });
+  });
 });
