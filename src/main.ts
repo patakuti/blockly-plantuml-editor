@@ -44,11 +44,11 @@ import { installSplitter } from "./ui/splitter";
 import { openImportDialog } from "./ui/importDialog";
 import { parseActivityPlantUml } from "./import/activityImportParser";
 import { buildActivityWorkspace } from "./import/activityImportBuilder";
-import { parseSequencePlantUml } from "./import/sequenceImportParser";
+import { parseSequencePlantUml, collectAmbiguousQuoteNames as collectAmbiguousSequenceQuoteNames } from "./import/sequenceImportParser";
 import { buildSequenceWorkspace } from "./import/sequenceImportBuilder";
 import { parseStatePlantUml } from "./import/stateImportParser";
 import { buildStateWorkspace } from "./import/stateImportBuilder";
-import { parseComponentPlantUml } from "./import/componentImportParser";
+import { parseComponentPlantUml, collectAmbiguousQuoteNames as collectAmbiguousComponentQuoteNames } from "./import/componentImportParser";
 import { buildComponentWorkspace } from "./import/componentImportBuilder";
 
 const app = document.getElementById("app")!;
@@ -120,6 +120,7 @@ const diagramConfigs: DiagramConfig[] = [
         placeholder: '@startuml\nparticipant "Alice"\nparticipant "Bob"\n"Alice" -> "Bob": Hello\n@enduml',
         parse: parseSequencePlantUml,
         build: buildSequenceWorkspace,
+        checkAmbiguousQuotes: collectAmbiguousSequenceQuoteNames,
       }),
   },
   {
@@ -162,6 +163,7 @@ const diagramConfigs: DiagramConfig[] = [
         placeholder: '@startuml\ncomponent "Alpha" {\n}\ncomponent "Beta" {\n}\n"Alpha" --> "Beta"\n@enduml',
         parse: parseComponentPlantUml,
         build: buildComponentWorkspace,
+        checkAmbiguousQuotes: collectAmbiguousComponentQuoteNames,
       }),
   },
 ];

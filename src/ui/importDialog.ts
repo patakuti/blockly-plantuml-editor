@@ -10,6 +10,14 @@ export interface ImportDialogConfig<T> {
   placeholder: string;
   parse: (source: string) => T[];
   build: (workspace: Blockly.Workspace, nodes: T[]) => void;
+  /**
+   * Optional post-build check for names that may have lost their original
+   * `"` on a previous export (FR-IMPORT-08, 02_design.md 34.5). Returns the
+   * distinct ambiguous names found in `nodes`, or an empty array. Only
+   * sequence/component diagrams supply this (34.3); activity/state diagrams
+   * don't use escapeQuotedName and omit the field entirely.
+   */
+  checkAmbiguousQuotes?: (nodes: T[]) => string[];
 }
 
 /**
@@ -89,6 +97,18 @@ export function openImportDialog<T>(workspace: Blockly.WorkspaceSvg, config: Imp
       if (!window.confirm("This will replace the current diagram. Continue?")) return;
     }
     config.build(workspace, nodes);
+
+    const ambiguousNames = config.checkAmbiguousQuotes?.(nodes) ?? [];
+    if (ambiguousNames.length > 0) {
+      window.alert(
+        `The following imported name(s) contain a single quote ('): ${ambiguousNames
+          .map((name) => `"${name}"`)
+          .join(", ")}\n\n` +
+          `This tool converts " to ' when exporting (PlantUML doesn't support escaping " inside a quoted ` +
+          `identifier), so if any of these originally had a " instead, that's no longer recoverable.`,
+      );
+    }
+
     close();
   });
 }
