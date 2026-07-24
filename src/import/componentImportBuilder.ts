@@ -1,6 +1,14 @@
 import * as Blockly from "blockly/core";
 import type { ComponentImportedNode } from "./componentImportParser";
 import { setFieldValueRefreshingDropdown } from "../blocks/common/setDropdownFieldValue";
+import { registerIneligible } from "../blocks/common/autoDefaultTracking";
+
+/** A Dependency block whose FROM/TO assignment is deferred until every Component in the tree exists (see buildComponentWorkspace). */
+interface PendingDependency {
+  block: Blockly.Block;
+  from: string;
+  to: string;
+}
 
 /**
  * Turns a parsed node tree (componentImportParser.ts) into real blocks in
@@ -12,6 +20,10 @@ import { setFieldValueRefreshingDropdown } from "../blocks/common/setDropdownFie
  * connection type, so the parser's flat node list is built as one single
  * chain, same as activityImportBuilder.ts/stateImportBuilder.ts.
  *
+ * Dependency blocks get their FROM/TO set only after the whole tree is built
+ * (see assignDependencyFields), not at creation time -- see that function's
+ * comment for why.
+ *
  * Replaces the entire workspace: callers are expected to have already
  * confirmed this with the user when there was something to lose
  * (01_requirements.md FR-IMPORT-05, handled in ui/importDialog.ts).
@@ -20,27 +32,41 @@ export function buildComponentWorkspace(workspace: Blockly.Workspace, nodes: Com
   Blockly.Events.setGroup(true);
   try {
     workspace.clear();
-    buildChain(workspace, nodes);
-    refreshDependencyDropdownText(workspace);
+    const pending: PendingDependency[] = [];
+    buildChain(workspace, nodes, pending);
+    assignDependencyFields(pending);
   } finally {
     Blockly.Events.setGroup(false);
   }
 }
 
 /**
+ * Sets each Dependency's FROM/TO once every Component in the tree has been
+ * created, rather than at the Dependency's own creation time.
+ *
  * Component names have no declaration-order constraint (02_design.md 27.2),
  * so a Dependency can reference one that's declared later in the source and
  * therefore doesn't exist in the workspace yet when that Dependency block is
  * built (buildChain/attachChain build in one single pass, in source order).
- * Same fix as stateImportBuilder.ts's refreshTransitionDropdownText: once
- * every node is built, all names exist, so a second refresh pass over every
- * Dependency fixes the on-screen FROM/TO label without touching the
- * underlying value (which was already correct throughout).
+ * Setting FROM/TO at creation time in that case, then "refreshing" them again
+ * to the same value once every Component exists, was tried first and found
+ * (via manual browser testing, not caught by any headless test) to leave the
+ * on-screen label stuck on the field's very first cached option
+ * ("(no components)") forever: FieldDropdown only recomputes its displayed
+ * text when doValueUpdate_ actually runs, and that's skipped whenever
+ * setFieldValue is called with a value equal to the field's current one --
+ * exactly what a same-value "refresh" does. The underlying value (and thus
+ * componentWorkspaceToCode's output) was correct throughout; only the label
+ * was wrong, permanently, until the user manually picked a different value
+ * and back. Deferring the *first* (and only) FROM/TO assignment to this
+ * single pass instead avoids the bug entirely, since by then the referenced
+ * Component always already exists as a real option and doValueUpdate_
+ * resolves it correctly on that first and only assignment.
  */
-function refreshDependencyDropdownText(workspace: Blockly.Workspace): void {
-  for (const block of workspace.getBlocksByType("component_dependency", false)) {
-    setFieldValueRefreshingDropdown(block, "FROM", block.getFieldValue("FROM"));
-    setFieldValueRefreshingDropdown(block, "TO", block.getFieldValue("TO"));
+function assignDependencyFields(pending: PendingDependency[]): void {
+  for (const { block, from, to } of pending) {
+    setFieldValueRefreshingDropdown(block, "FROM", from);
+    setFieldValueRefreshingDropdown(block, "TO", to);
   }
 }
 
@@ -53,11 +79,15 @@ function finishBlock(block: Blockly.Block): void {
 }
 
 /** Builds `nodes` as a chain of connected sibling blocks. Returns the first block, or null if `nodes` is empty. */
-function buildChain(workspace: Blockly.Workspace, nodes: ComponentImportedNode[]): Blockly.Block | null {
+function buildChain(
+  workspace: Blockly.Workspace,
+  nodes: ComponentImportedNode[],
+  pending: PendingDependency[],
+): Blockly.Block | null {
   let first: Blockly.Block | null = null;
   let previous: Blockly.Block | null = null;
   for (const node of nodes) {
-    const block = buildBlock(workspace, node);
+    const block = buildBlock(workspace, node, pending);
     if (previous) previous.nextConnection!.connect(block.previousConnection!);
     else first = block;
     previous = block;
@@ -71,32 +101,44 @@ function attachChain(
   block: Blockly.Block,
   inputName: string,
   nodes: ComponentImportedNode[],
+  pending: PendingDependency[],
 ): void {
-  const first = buildChain(workspace, nodes);
+  const first = buildChain(workspace, nodes, pending);
   if (!first) return;
   block.getInput(inputName)!.connection!.connect(first.previousConnection!);
 }
 
-function buildBlock(workspace: Blockly.Workspace, node: ComponentImportedNode): Blockly.Block {
-  const block = createBlockForNode(workspace, node);
+function buildBlock(
+  workspace: Blockly.Workspace,
+  node: ComponentImportedNode,
+  pending: PendingDependency[],
+): Blockly.Block {
+  const block = createBlockForNode(workspace, node, pending);
   finishBlock(block);
+  // Already carries its real field values (parsed from the imported PlantUML source),
+  // so Round 19's auto-default must not treat it as a freshly-dropped blank block
+  // (02_design.md 24.4, same fix as stateImportBuilder.ts/sequenceImportBuilder.ts).
+  registerIneligible([block.id]);
   return block;
 }
 
-function createBlockForNode(workspace: Blockly.Workspace, node: ComponentImportedNode): Blockly.Block {
+function createBlockForNode(
+  workspace: Blockly.Workspace,
+  node: ComponentImportedNode,
+  pending: PendingDependency[],
+): Blockly.Block {
   switch (node.kind) {
     case "component": {
       const block = workspace.newBlock("component_component");
       block.setFieldValue(node.name, "NAME");
-      attachChain(workspace, block, "DO", node.body);
+      attachChain(workspace, block, "DO", node.body, pending);
       return block;
     }
 
     case "dependency": {
       const block = workspace.newBlock("component_dependency");
-      setFieldValueRefreshingDropdown(block, "FROM", node.from);
-      setFieldValueRefreshingDropdown(block, "TO", node.to);
       block.setFieldValue(node.text ?? "", "TEXT");
+      pending.push({ block, from: node.from, to: node.to });
       return block;
     }
 
