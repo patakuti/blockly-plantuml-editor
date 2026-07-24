@@ -21,6 +21,12 @@ import { validateStateWorkspace } from "./blocks/state/validation";
 import { syncStateRename } from "./blocks/state/renameSync";
 import { applyStateAutoDefault } from "./blocks/state/autoDefault";
 import { installStateTransitionNoteRestriction } from "./blocks/state/noteRestriction";
+import { defineComponentBlocks } from "./blocks/component/blocks";
+import { componentToolbox } from "./blocks/component/toolbox";
+import { componentGenerator, componentWorkspaceToCode } from "./generators/componentGenerator";
+import { validateComponentWorkspace } from "./blocks/component/validation";
+import { syncComponentRename } from "./blocks/component/renameSync";
+import { applyComponentAutoDefault } from "./blocks/component/autoDefault";
 import { guardDuplicateRename, resolveDuplicateNamesOnCreate } from "./blocks/common/duplicateName";
 import { trackBlockCreate, isEligible, forgetBlocks } from "./blocks/common/autoDefaultTracking";
 import { getBlockOwnCode } from "./generators/common/blockSnippet";
@@ -42,6 +48,8 @@ import { parseSequencePlantUml } from "./import/sequenceImportParser";
 import { buildSequenceWorkspace } from "./import/sequenceImportBuilder";
 import { parseStatePlantUml } from "./import/stateImportParser";
 import { buildStateWorkspace } from "./import/stateImportBuilder";
+import { parseComponentPlantUml } from "./import/componentImportParser";
+import { buildComponentWorkspace } from "./import/componentImportBuilder";
 
 const app = document.getElementById("app")!;
 
@@ -68,6 +76,7 @@ Blockly.setLocale(En as unknown as Record<string, string>);
 defineActivityBlocks();
 defineSequenceBlocks();
 defineStateBlocks();
+defineComponentBlocks();
 installUnifiedBlockRangeOverrides();
 installNoteDirectionMenu();
 installStateTransitionNoteRestriction();
@@ -132,6 +141,27 @@ const diagramConfigs: DiagramConfig[] = [
         placeholder: "@startuml\nstate State1\n[*] --> State1\nState1 --> [*]\n@enduml",
         parse: parseStatePlantUml,
         build: buildStateWorkspace,
+      }),
+  },
+  {
+    key: "component",
+    label: "Component Diagram",
+    toolbox: componentToolbox,
+    toCode: componentWorkspaceToCode,
+    generator: componentGenerator,
+    jsonFilename: "component-diagram.json",
+    plantUmlFilename: "component-diagram.puml",
+    onValidate: validateComponentWorkspace,
+    onFieldChange: syncComponentRename,
+    nameOwnerTypes: new Set(["component_component"]),
+    autoDefaultOnConnect: applyComponentAutoDefault,
+    openImportDialog: (workspace) =>
+      openImportDialog(workspace, {
+        title: "Import PlantUML (Component Diagram)",
+        hint: "Paste PlantUML component-diagram source. Unrecognized lines are kept as Raw PlantUML Line blocks.",
+        placeholder: '@startuml\ncomponent "Alpha" {\n}\ncomponent "Beta" {\n}\n"Alpha" --> "Beta"\n@enduml',
+        parse: parseComponentPlantUml,
+        build: buildComponentWorkspace,
       }),
   },
 ];
