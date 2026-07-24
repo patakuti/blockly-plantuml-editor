@@ -83,4 +83,52 @@ describe("validateActivityWorkspace", () => {
     expect(warning?.message).toContain("Only one start block is allowed");
     expect(warning?.message).toContain("References a swimlane that doesn't exist");
   });
+
+  it("does not warn about a swimlane connected into the start-headed chain", () => {
+    const start = workspace.newBlock("activity_start");
+    const swimlane = workspace.newBlock("activity_swimlane");
+    swimlane.setFieldValue("A", "NAME");
+    start.nextConnection!.connect(swimlane.previousConnection!);
+
+    expect(hasWarning(validateActivityWorkspace(workspace), swimlane)).toBe(false);
+  });
+
+  it("does not warn about a swimlane nested inside a container on the output chain (FR-ACT-16)", () => {
+    const start = workspace.newBlock("activity_start");
+    const ifBlock = workspace.newBlock("activity_if");
+    const swimlane = workspace.newBlock("activity_swimlane");
+    swimlane.setFieldValue("A", "NAME");
+    start.nextConnection!.connect(ifBlock.previousConnection!);
+    ifBlock.getInput("DO0")!.connection!.connect(swimlane.previousConnection!);
+
+    expect(hasWarning(validateActivityWorkspace(workspace), swimlane)).toBe(false);
+  });
+
+  it("warns about a swimlane placed standalone, connected to nothing (FR-ACT-16)", () => {
+    workspace.newBlock("activity_start");
+    const swimlane = workspace.newBlock("activity_swimlane");
+    swimlane.setFieldValue("A", "NAME");
+
+    expect(hasWarning(validateActivityWorkspace(workspace), swimlane)).toBe(true);
+  });
+
+  it("warns about a swimlane on a disconnected, dropped alternate chain (FR-ACT-16)", () => {
+    workspace.newBlock("activity_start"); // the chain that's actually picked as output (14.2)
+    const action = workspace.newBlock("activity_action");
+    const swimlane = workspace.newBlock("activity_swimlane");
+    swimlane.setFieldValue("A", "NAME");
+    action.nextConnection!.connect(swimlane.previousConnection!);
+
+    expect(hasWarning(validateActivityWorkspace(workspace), swimlane)).toBe(true);
+  });
+
+  it("clears the unreachable-swimlane warning once it's connected into the output chain", () => {
+    const start = workspace.newBlock("activity_start");
+    const swimlane = workspace.newBlock("activity_swimlane");
+    swimlane.setFieldValue("A", "NAME");
+    expect(hasWarning(validateActivityWorkspace(workspace), swimlane)).toBe(true);
+
+    start.nextConnection!.connect(swimlane.previousConnection!);
+    expect(hasWarning(validateActivityWorkspace(workspace), swimlane)).toBe(false);
+  });
 });

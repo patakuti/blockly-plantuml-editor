@@ -1,6 +1,7 @@
 import * as Blockly from "blockly/core";
 import type { ImportedNode } from "./activityImportParser";
 import { setNoteDirection } from "../generators/common/noteWrapper";
+import { setFieldValueRefreshingDropdown } from "../blocks/common/setDropdownFieldValue";
 
 /**
  * Turns a parsed node tree (activityImportParser.ts) into real blocks in
@@ -17,10 +18,32 @@ export function buildActivityWorkspace(workspace: Blockly.Workspace, nodes: Impo
   Blockly.Events.setGroup(true);
   try {
     workspace.clear();
-    buildChain(workspace, nodes);
+    const first = buildChain(workspace, nodes);
+    applyPinnedSwimlane(first, nodes[0]);
   } finally {
     Blockly.Events.setGroup(false);
   }
+}
+
+/**
+ * Sets the (single, if any) SWIMLANE pin recovered by
+ * activityImportParser.ts's stripHoistedPreamble (02_design.md 32.4/32.5),
+ * once the whole tree already exists -- not at the `activity_start` block's
+ * own creation time in createBlockForNode. At that earlier point,
+ * `activity_swimlane` blocks with the pinned name may not have been built
+ * yet (the chain is built in source order, and the pin can reference a lane
+ * that's used later in the chain than `start` itself), so
+ * setFieldValueRefreshingDropdown's option-list refresh would still find
+ * nothing to resolve the display text against -- the same "referenced
+ * option doesn't exist yet" bug class as componentImportBuilder.ts's
+ * assignDependencyFields (28.3), fixed the same way: defer until every
+ * relevant block already exists. `nodes[0]` is where the parser always
+ * attaches `pinnedSwimlane` when present (only ever the top-level list's
+ * first node), and `first` is buildChain's block for that same node.
+ */
+function applyPinnedSwimlane(first: Blockly.Block | null, headNode: ImportedNode | undefined): void {
+  if (!first || !headNode || headNode.kind !== "start" || !headNode.pinnedSwimlane) return;
+  setFieldValueRefreshingDropdown(first, "SWIMLANE", headNode.pinnedSwimlane);
 }
 
 function finishBlock(block: Blockly.Block): void {
@@ -64,9 +87,10 @@ function buildBlock(workspace: Blockly.Workspace, node: ImportedNode): Blockly.B
 function createBlockForNode(workspace: Blockly.Workspace, node: ImportedNode): Blockly.Block {
   switch (node.kind) {
     case "start":
-      // The SWIMLANE pin (FR-ACT-11) is not reconstructed on import -- see
-      // 02_design.md 15.3's "known limitations". Imported starts default to
-      // "(auto)", same as a freshly placed activity_start block.
+      // The SWIMLANE pin (FR-ACT-11), if any, is applied later by
+      // applyPinnedSwimlane once the whole tree exists -- see its own doc
+      // comment for why. Freshly built, this defaults to "(auto)", same as
+      // a newly placed activity_start block.
       return workspace.newBlock("activity_start");
 
     case "stop":
