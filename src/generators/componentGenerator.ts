@@ -22,9 +22,13 @@ componentGenerator.forBlock["component_dependency"] = (block) => {
   return text ? `"${from}" --> "${to}" : ${escapeText(text)}\n` : `"${from}" --> "${to}"\n`;
 };
 
+componentGenerator.forBlock["component_style"] = (block) =>
+  `skinparam componentStyle ${block.getFieldValue("STYLE")}\n`;
+
 componentGenerator.forBlock["component_raw_line"] = (block) => `${block.getFieldValue("TEXT")}\n`;
 
 const DEPENDENCY_LINE = /^"[^"]*" --> "[^"]*"(?: : .*)?$/;
+const COMPONENT_STYLE_LINE = /^skinparam componentStyle (?:rectangle|uml1|uml2)$/;
 
 /**
  * PlantUML's component-diagram renderer doesn't reliably resolve a "-->"
@@ -52,6 +56,31 @@ function hoistDependencies(body: string): string {
 }
 
 /**
+ * Mirror image of hoistDependencies: pulls every "skinparam componentStyle
+ * X" line out of its original position and re-emits them all, in their
+ * original order of appearance, at the very front (02_design.md 31.3) --
+ * front rather than back because a skinparam line has no scope-resolution
+ * constraint like a dependency arrow does, so it's simplest and most
+ * readable to put it first, right after @startuml.
+ *
+ * Unlike hoistDependencies, absence isn't a no-op: per FR-COMP-09 the
+ * diagram should default to rectangle style even when the user never places
+ * a component_style block, so an empty result falls back to one synthesized
+ * "rectangle" line.
+ */
+function hoistComponentStyle(body: string): string {
+  const lines = body.split("\n");
+  const kept: string[] = [];
+  const styles: string[] = [];
+  for (const line of lines) {
+    if (COMPONENT_STYLE_LINE.test(line)) styles.push(line);
+    else kept.push(line);
+  }
+  const preamble = styles.length > 0 ? styles : ["skinparam componentStyle rectangle"];
+  return preamble.map((line) => `${line}\n`).join("") + kept.join("\n");
+}
+
+/**
  * Generates full PlantUML source for the component-diagram workspace.
  *
  * Like state diagrams (stateWorkspaceToCode) and unlike
@@ -65,5 +94,5 @@ export function componentWorkspaceToCode(workspace: Blockly.Workspace): string {
     .map((head) => generateStatements(componentGenerator, head))
     .join("");
 
-  return `@startuml\n${hoistDependencies(body)}@enduml\n`;
+  return `@startuml\n${hoistComponentStyle(hoistDependencies(body))}@enduml\n`;
 }

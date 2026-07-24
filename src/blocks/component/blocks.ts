@@ -61,6 +61,27 @@ export function defineComponentBlocks(): void {
       tooltip: "Declares a component. Can nest (a component inside another component's body).",
     },
     {
+      type: "component_style",
+      message0: "component style %1",
+      args0: [
+        {
+          type: "field_dropdown",
+          name: "STYLE",
+          options: [
+            ["rectangle", "rectangle"],
+            ["uml1", "uml1"],
+            ["uml2", "uml2"],
+          ],
+        },
+      ],
+      previousStatement: COMPONENT_STATEMENT,
+      nextStatement: COMPONENT_STATEMENT,
+      colour: 330,
+      tooltip:
+        "Sets skinparam componentStyle for the whole diagram (default: rectangle). " +
+        "Placed anywhere, but always emitted first in the generated PlantUML.",
+    },
+    {
       type: "component_raw_line",
       message0: "raw %1",
       args0: [

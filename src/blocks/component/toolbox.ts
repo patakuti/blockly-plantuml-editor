@@ -9,6 +9,10 @@ export const componentToolbox: Blockly.utils.toolbox.ToolboxInfo = {
     },
     {
       kind: "block",
+      type: "component_style",
+    },
+    {
+      kind: "block",
       type: "component_dependency",
     },
     {
