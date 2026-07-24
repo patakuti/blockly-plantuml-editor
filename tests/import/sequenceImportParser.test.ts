@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { parseSequencePlantUml, PlantUmlImportError, type SequenceImportedNode } from "../../src/import/sequenceImportParser";
+import {
+  collectAmbiguousQuoteNames,
+  parseSequencePlantUml,
+  PlantUmlImportError,
+  type SequenceImportedNode,
+} from "../../src/import/sequenceImportParser";
 
 describe("parseSequencePlantUml", () => {
   it("parses an empty diagram", () => {
@@ -173,5 +178,44 @@ describe("parseSequencePlantUml", () => {
     expect(() => parseSequencePlantUml('"Alice" -> "Bob": ping\nnote right\nunterminated\n')).toThrow(
       PlantUmlImportError,
     );
+  });
+});
+
+describe("collectAmbiguousQuoteNames (FR-IMPORT-08)", () => {
+  it("returns an empty array when no name contains a single quote", () => {
+    const nodes = parseSequencePlantUml('@startuml\nparticipant "Alice"\n"Alice" -> "Alice": ping\n@enduml\n');
+    expect(collectAmbiguousQuoteNames(nodes)).toEqual([]);
+  });
+
+  it("detects a participant/actor name containing a single quote", () => {
+    const nodes = parseSequencePlantUml('@startuml\nparticipant "O\'Brien"\nactor "D\'Angelo"\n@enduml\n');
+    expect(collectAmbiguousQuoteNames(nodes)).toEqual(["O'Brien", "D'Angelo"]);
+  });
+
+  it("detects a message's FROM/TO containing a single quote", () => {
+    const nodes = parseSequencePlantUml('"O\'Brien" -> "Bob": ping\n');
+    expect(collectAmbiguousQuoteNames(nodes)).toEqual(["O'Brien"]);
+  });
+
+  it("detects a note/activate/deactivate TARGET containing a single quote", () => {
+    const nodes = parseSequencePlantUml('note left of "O\'Brien": hi\nactivate "O\'Brien"\ndeactivate "O\'Brien"\n');
+    expect(collectAmbiguousQuoteNames(nodes)).toEqual(["O'Brien"]);
+  });
+
+  it("does not flag a free-text message/note body containing a single quote", () => {
+    const nodes = parseSequencePlantUml('"Alice" -> "Bob": it\'s fine\nnote left of "Alice": it\'s fine too\n');
+    expect(collectAmbiguousQuoteNames(nodes)).toEqual([]);
+  });
+
+  it("recurses into alt/opt/loop bodies, including else branches", () => {
+    const nodes = parseSequencePlantUml(
+      'alt (a)\n"O\'Brien" -> "Bob": ping\nelse (b)\nopt (c)\nloop (d)\n"Alice" -> "D\'Angelo": pong\nend\nend\nend\n',
+    );
+    expect(collectAmbiguousQuoteNames(nodes)).toEqual(["O'Brien", "D'Angelo"]);
+  });
+
+  it("deduplicates repeated occurrences of the same ambiguous name", () => {
+    const nodes = parseSequencePlantUml('participant "O\'Brien"\n"O\'Brien" -> "O\'Brien": ping\n');
+    expect(collectAmbiguousQuoteNames(nodes)).toEqual(["O'Brien"]);
   });
 });

@@ -191,3 +191,50 @@ export function parseSequencePlantUml(source: string): SequenceImportedNode[] {
   const cursor = new LineCursor(preprocessPlantUmlSource(source));
   return parseStatements(cursor, () => false);
 }
+
+/**
+ * Collects the distinct quoted-identifier values (Participant/Actor name,
+ * Message FROM/TO, Note/Activate/Deactivate TARGET) that contain a `'`
+ * (FR-IMPORT-08, 02_design.md 34.4). These are exactly the fields
+ * sequenceGenerator.ts writes through escapeQuotedName on export, whose `"`
+ * -> `'` substitution is irreversible -- a `'` here might be one of those
+ * converted quotes, or might just be a name the user typed with an
+ * apostrophe. Free-text fields (message/note text, alt/opt/loop cond) only
+ * go through escapeText and are never ambiguous this way, so they're
+ * intentionally not checked.
+ */
+export function collectAmbiguousQuoteNames(nodes: SequenceImportedNode[]): string[] {
+  const names = new Set<string>();
+  const check = (value: string) => {
+    if (value.includes("'")) names.add(value);
+  };
+  const walk = (list: SequenceImportedNode[]) => {
+    for (const node of list) {
+      switch (node.kind) {
+        case "participant":
+        case "actor":
+          check(node.name);
+          break;
+        case "message":
+          check(node.from);
+          check(node.to);
+          break;
+        case "note":
+        case "activate":
+        case "deactivate":
+          check(node.target);
+          break;
+        case "alt":
+          walk(node.body);
+          for (const branch of node.elseBranches) walk(branch.body);
+          break;
+        case "opt":
+        case "loop":
+          walk(node.body);
+          break;
+      }
+    }
+  };
+  walk(nodes);
+  return [...names];
+}

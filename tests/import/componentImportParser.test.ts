@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseComponentPlantUml, PlantUmlImportError } from "../../src/import/componentImportParser";
+import { collectAmbiguousQuoteNames, parseComponentPlantUml, PlantUmlImportError } from "../../src/import/componentImportParser";
 
 describe("parseComponentPlantUml", () => {
   it("parses a leaf component, stripping @startuml/@enduml", () => {
@@ -61,5 +61,32 @@ describe("parseComponentPlantUml", () => {
     expect(() => parseComponentPlantUml('component "Outer" {\ncomponent "Inner" {\n}\n')).toThrow(
       PlantUmlImportError,
     );
+  });
+});
+
+describe("collectAmbiguousQuoteNames (FR-IMPORT-08)", () => {
+  it("returns an empty array when no name contains a single quote", () => {
+    const nodes = parseComponentPlantUml('component "Alpha" {\n}\n"Alpha" --> "Alpha"');
+    expect(collectAmbiguousQuoteNames(nodes)).toEqual([]);
+  });
+
+  it("detects a component name containing a single quote, including nested components", () => {
+    const nodes = parseComponentPlantUml('component "O\'Brien" {\ncomponent "D\'Angelo" {\n}\n}');
+    expect(collectAmbiguousQuoteNames(nodes)).toEqual(["O'Brien", "D'Angelo"]);
+  });
+
+  it("detects a dependency's FROM/TO containing a single quote", () => {
+    const nodes = parseComponentPlantUml('"O\'Brien" --> "Beta"');
+    expect(collectAmbiguousQuoteNames(nodes)).toEqual(["O'Brien"]);
+  });
+
+  it("does not flag a dependency's free-text label containing a single quote", () => {
+    const nodes = parseComponentPlantUml('"Alpha" --> "Beta" : it\'s fine');
+    expect(collectAmbiguousQuoteNames(nodes)).toEqual([]);
+  });
+
+  it("deduplicates repeated occurrences of the same ambiguous name", () => {
+    const nodes = parseComponentPlantUml('component "O\'Brien" {\n}\n"O\'Brien" --> "O\'Brien"');
+    expect(collectAmbiguousQuoteNames(nodes)).toEqual(["O'Brien"]);
   });
 });

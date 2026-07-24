@@ -95,3 +95,36 @@ export function parseComponentPlantUml(source: string): ComponentImportedNode[] 
   const cursor = new LineCursor(preprocessPlantUmlSource(source));
   return parseStatements(cursor, () => false);
 }
+
+/**
+ * Collects the distinct quoted-identifier values (Component name, Dependency
+ * FROM/TO) that contain a `'` (FR-IMPORT-08, 02_design.md 34.4). These are
+ * exactly the fields componentGenerator.ts writes through escapeQuotedName on
+ * export, whose `"` -> `'` substitution is irreversible -- a `'` here might
+ * be one of those converted quotes, or might just be a name the user typed
+ * with an apostrophe. Dependency's free-text label only goes through
+ * escapeText and is never ambiguous this way, so it's intentionally not
+ * checked.
+ */
+export function collectAmbiguousQuoteNames(nodes: ComponentImportedNode[]): string[] {
+  const names = new Set<string>();
+  const check = (value: string) => {
+    if (value.includes("'")) names.add(value);
+  };
+  const walk = (list: ComponentImportedNode[]) => {
+    for (const node of list) {
+      switch (node.kind) {
+        case "component":
+          check(node.name);
+          walk(node.body);
+          break;
+        case "dependency":
+          check(node.from);
+          check(node.to);
+          break;
+      }
+    }
+  };
+  walk(nodes);
+  return [...names];
+}
