@@ -46,6 +46,8 @@ import { parseSequencePlantUml } from "./import/sequenceImportParser";
 import { buildSequenceWorkspace } from "./import/sequenceImportBuilder";
 import { parseStatePlantUml } from "./import/stateImportParser";
 import { buildStateWorkspace } from "./import/stateImportBuilder";
+import { parseComponentPlantUml } from "./import/componentImportParser";
+import { buildComponentWorkspace } from "./import/componentImportBuilder";
 
 const app = document.getElementById("app")!;
 
@@ -149,6 +151,14 @@ const diagramConfigs: DiagramConfig[] = [
     plantUmlFilename: "component-diagram.puml",
     onValidate: validateComponentWorkspace,
     nameOwnerTypes: new Set(["component_component"]),
+    openImportDialog: (workspace) =>
+      openImportDialog(workspace, {
+        title: "Import PlantUML (Component Diagram)",
+        hint: "Paste PlantUML component-diagram source. Unrecognized lines are kept as Raw PlantUML Line blocks.",
+        placeholder: '@startuml\ncomponent "Alpha" {\n}\ncomponent "Beta" {\n}\n"Alpha" --> "Beta"\n@enduml',
+        parse: parseComponentPlantUml,
+        build: buildComponentWorkspace,
+      }),
   },
 ];
 
