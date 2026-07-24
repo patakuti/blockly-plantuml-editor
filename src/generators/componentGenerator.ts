@@ -24,6 +24,33 @@ componentGenerator.forBlock["component_dependency"] = (block) => {
 
 componentGenerator.forBlock["component_raw_line"] = (block) => `${block.getFieldValue("TEXT")}\n`;
 
+const DEPENDENCY_LINE = /^"[^"]*" --> "[^"]*"(?: : .*)?$/;
+
+/**
+ * PlantUML's component-diagram renderer doesn't reliably resolve a "-->"
+ * relation line while the current parse position is inside a nested
+ * `component "X" { ... }` scope (02_design.md 30.1, verified against the
+ * public PlantUML server): the referenced component can come back as a
+ * separate, duplicate "ghost" node instead of resolving to the real one.
+ * Regardless of where a Dependency block sits in the Blockly canvas
+ * (including nested inside a Component, which the editor still allows), this
+ * hoists every generated dependency line out of the body and re-emits them
+ * all, in their original order of appearance, at the very end -- same idea
+ * as hoistSwimlaneDeclarations (activityGenerator.ts), but by removing and
+ * appending rather than duplicating (a "-->" line, unlike a swimlane marker,
+ * is broken if left behind at its original nested position too).
+ */
+function hoistDependencies(body: string): string {
+  const lines = body.split("\n");
+  const kept: string[] = [];
+  const dependencies: string[] = [];
+  for (const line of lines) {
+    if (DEPENDENCY_LINE.test(line)) dependencies.push(line);
+    else kept.push(line);
+  }
+  return kept.join("\n") + dependencies.map((line) => `${line}\n`).join("");
+}
+
 /**
  * Generates full PlantUML source for the component-diagram workspace.
  *
@@ -38,5 +65,5 @@ export function componentWorkspaceToCode(workspace: Blockly.Workspace): string {
     .map((head) => generateStatements(componentGenerator, head))
     .join("");
 
-  return `@startuml\n${body}@enduml\n`;
+  return `@startuml\n${hoistDependencies(body)}@enduml\n`;
 }

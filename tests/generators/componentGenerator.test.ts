@@ -79,6 +79,55 @@ describe("componentWorkspaceToCode", () => {
     );
   });
 
+  it("hoists a Dependency nested inside a Component's body to the very end (02_design.md 30)", () => {
+    const outer = workspace.newBlock("component_component");
+    outer.setFieldValue("Component1", "NAME");
+    const inner = workspace.newBlock("component_component");
+    inner.setFieldValue("Component2", "NAME");
+    const dependency = workspace.newBlock("component_dependency");
+    dependency.setFieldValue("Component2", "FROM");
+    dependency.setFieldValue("Component3", "TO");
+
+    outer.getInput("DO")!.connection!.connect(inner.previousConnection!);
+    inner.getInput("DO")!.connection!.connect(dependency.previousConnection!);
+    const sibling = workspace.newBlock("component_component");
+    sibling.setFieldValue("Component3", "NAME");
+    outer.nextConnection!.connect(sibling.previousConnection!);
+
+    expect(componentWorkspaceToCode(workspace)).toBe(
+      '@startuml\n' +
+        'component "Component1" {\n' +
+        'component "Component2" {\n' +
+        '}\n' +
+        '}\n' +
+        'component "Component3" {\n' +
+        '}\n' +
+        '"Component2" --> "Component3"\n' +
+        '@enduml\n',
+    );
+  });
+
+  it("hoists multiple dependencies to the end, preserving their original relative order", () => {
+    const component = workspace.newBlock("component_component");
+    component.setFieldValue("Alpha", "NAME");
+    const first = workspace.newBlock("component_dependency");
+    first.setFieldValue("Alpha", "FROM");
+    first.setFieldValue("Beta", "TO");
+    component.getInput("DO")!.connection!.connect(first.previousConnection!);
+    const second = workspace.newBlock("component_dependency");
+    second.setFieldValue("Beta", "FROM");
+    second.setFieldValue("Alpha", "TO");
+    first.nextConnection!.connect(second.previousConnection!);
+
+    expect(componentWorkspaceToCode(workspace)).toBe(
+      '@startuml\n' +
+        'component "Alpha" {\n}\n' +
+        '"Alpha" --> "Beta"\n' +
+        '"Beta" --> "Alpha"\n' +
+        '@enduml\n',
+    );
+  });
+
   it("includes every disconnected top-level chain, not just one", () => {
     const componentA = workspace.newBlock("component_component");
     componentA.setFieldValue("A", "NAME");

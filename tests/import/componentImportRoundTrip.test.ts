@@ -61,4 +61,36 @@ describe("component PlantUML import round-trip", () => {
     const text = '@startuml\ncomponent "A" {\n}\nskinparam handwritten true\n"A" --> "A"\n@enduml\n';
     expect(roundTrip(text)).toBe(text);
   });
+
+  /**
+   * Not a byte-for-byte round trip: a Dependency nested inside a Component's
+   * body is hoisted to the top-level end on re-generation (02_design.md 30),
+   * since PlantUML doesn't reliably resolve a "-->" line left in that nested
+   * position (verified against the public PlantUML server). The parsed
+   * block structure still faithfully reflects where the Dependency block sat
+   * in the source; only the *regenerated* text normalizes its position.
+   */
+  it("normalizes a nested dependency to the hoisted (top-level, end) position on re-export", () => {
+    const text =
+      "@startuml\n" +
+      'component "Component1" {\n' +
+      'component "Component2" {\n' +
+      '"Component2" --> "Component3"\n' +
+      "}\n" +
+      "}\n" +
+      'component "Component3" {\n' +
+      "}\n" +
+      "@enduml\n";
+    const hoisted =
+      "@startuml\n" +
+      'component "Component1" {\n' +
+      'component "Component2" {\n' +
+      "}\n" +
+      "}\n" +
+      'component "Component3" {\n' +
+      "}\n" +
+      '"Component2" --> "Component3"\n' +
+      "@enduml\n";
+    expect(roundTrip(text)).toBe(hoisted);
+  });
 });
