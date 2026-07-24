@@ -73,6 +73,26 @@ sequenceGenerator.forBlock["sequence_raw_line"] = (block) => `${block.getFieldVa
  * disconnected message chains are not included (same class of known
  * limitation as the activity_start/stop chain-detachment case).
  */
+/**
+ * Picks the head of the message-body chain that actually ends up in the
+ * generated PlantUML text (02_design.md 33.2): the topmost non-participant
+ * statement block. There's no fixed anchor for this chain (unlike
+ * activity_start), so any additional disconnected message chain is not
+ * included (known limitation, see the comment on sequenceWorkspaceToCode).
+ * Shared with blocks/sequence/validation.ts so activation-pairing checks
+ * (FR-SEQ-20) only look at what's actually generated.
+ */
+export function pickSequenceMessageChainHead(workspace: Blockly.Workspace): Blockly.Block | null {
+  return (
+    workspace
+      .getTopBlocks(true)
+      .find(
+        (block) =>
+          !(PARTICIPANT_LIKE_TYPES as readonly string[]).includes(block.type) && block.previousConnection !== null,
+      ) ?? null
+  );
+}
+
 export function sequenceWorkspaceToCode(workspace: Blockly.Workspace): string {
   const participantsCode = workspace
     .getTopBlocks(true)
@@ -80,14 +100,7 @@ export function sequenceWorkspaceToCode(workspace: Blockly.Workspace): string {
     .map((head) => generateStatements(sequenceGenerator, head))
     .join("");
 
-  const firstStatement =
-    workspace
-      .getTopBlocks(true)
-      .find(
-        (block) =>
-          !(PARTICIPANT_LIKE_TYPES as readonly string[]).includes(block.type) && block.previousConnection !== null,
-      ) ?? null;
-  const messagesCode = generateStatements(sequenceGenerator, firstStatement);
+  const messagesCode = generateStatements(sequenceGenerator, pickSequenceMessageChainHead(workspace));
 
   return `@startuml\n${participantsCode}${messagesCode}@enduml\n`;
 }

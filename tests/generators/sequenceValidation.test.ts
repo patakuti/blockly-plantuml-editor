@@ -106,6 +106,7 @@ describe("validateSequenceWorkspace", () => {
     activate.setFieldValue("Alice", "TARGET");
     const deactivate = workspace.newBlock("sequence_deactivate");
     deactivate.setFieldValue("Alice", "TARGET");
+    activate.nextConnection!.connect(deactivate.previousConnection!);
 
     expect(validateSequenceWorkspace(workspace)).toEqual([]);
   });
@@ -131,5 +132,111 @@ describe("validateSequenceWorkspace", () => {
     expect(hasWarning(warnings, level2)).toBe(false);
     expect(hasWarning(warnings, level3)).toBe(false);
     expect(hasWarning(warnings, level4)).toBe(true);
+  });
+
+  describe("Activate/Deactivate pairing (FR-SEQ-20)", () => {
+    function chain(...blocks: Blockly.Block[]): Blockly.Block[] {
+      for (let i = 0; i < blocks.length - 1; i++) {
+        blocks[i].nextConnection!.connect(blocks[i + 1].previousConnection!);
+      }
+      return blocks;
+    }
+
+    it("warns on a deactivate with no preceding matching activate", () => {
+      const alice = workspace.newBlock("sequence_participant");
+      alice.setFieldValue("Alice", "NAME");
+      const deactivate = workspace.newBlock("sequence_deactivate");
+      deactivate.setFieldValue("Alice", "TARGET");
+
+      expect(hasWarning(validateSequenceWorkspace(workspace), deactivate)).toBe(true);
+    });
+
+    it("warns on an activate that's never deactivated", () => {
+      const alice = workspace.newBlock("sequence_participant");
+      alice.setFieldValue("Alice", "NAME");
+      const activate = workspace.newBlock("sequence_activate");
+      activate.setFieldValue("Alice", "TARGET");
+
+      expect(hasWarning(validateSequenceWorkspace(workspace), activate)).toBe(true);
+    });
+
+    it("does not warn when activate/deactivate are properly paired", () => {
+      const alice = workspace.newBlock("sequence_participant");
+      alice.setFieldValue("Alice", "NAME");
+      const activate = workspace.newBlock("sequence_activate");
+      activate.setFieldValue("Alice", "TARGET");
+      const deactivate = workspace.newBlock("sequence_deactivate");
+      deactivate.setFieldValue("Alice", "TARGET");
+      chain(activate, deactivate);
+
+      expect(validateSequenceWorkspace(workspace)).toEqual([]);
+    });
+
+    it("pairs nested activates LIFO: closing out of order flags the still-open one", () => {
+      const alice = workspace.newBlock("sequence_participant");
+      alice.setFieldValue("Alice", "NAME");
+      const activate1 = workspace.newBlock("sequence_activate");
+      activate1.setFieldValue("Alice", "TARGET");
+      const activate2 = workspace.newBlock("sequence_activate");
+      activate2.setFieldValue("Alice", "TARGET");
+      const deactivate1 = workspace.newBlock("sequence_deactivate");
+      deactivate1.setFieldValue("Alice", "TARGET");
+      chain(activate1, activate2, deactivate1);
+
+      // Two activates, only one deactivate: the outer (first) activate is
+      // matched last (LIFO), so it's the one left unmatched.
+      const warnings = validateSequenceWorkspace(workspace);
+      expect(hasWarning(warnings, activate1)).toBe(true);
+      expect(hasWarning(warnings, activate2)).toBe(false);
+      expect(hasWarning(warnings, deactivate1)).toBe(false);
+    });
+
+    it("follows generation order through alt branches, not physical nesting", () => {
+      // activate happens inside the alt's DO0 branch, deactivate is placed
+      // after the alt block ends -- PlantUML processes activate/deactivate
+      // sequentially regardless of which branch they're in (02_design.md 33.1).
+      const alice = workspace.newBlock("sequence_participant");
+      alice.setFieldValue("Alice", "NAME");
+      const bob = workspace.newBlock("sequence_participant");
+      bob.setFieldValue("Bob", "NAME");
+
+      const alt = workspace.newBlock("sequence_alt");
+      const activate = workspace.newBlock("sequence_activate");
+      activate.setFieldValue("Alice", "TARGET");
+      alt.getInput("DO0")!.connection!.connect(activate.previousConnection!);
+
+      const deactivate = workspace.newBlock("sequence_deactivate");
+      deactivate.setFieldValue("Alice", "TARGET");
+      chain(alt, deactivate);
+
+      expect(validateSequenceWorkspace(workspace)).toEqual([]);
+    });
+
+    it("does not check activate/deactivate on a disconnected extra chain (known limitation)", () => {
+      // Two standalone, unconnected top-level blocks: only the first one
+      // (created first) is picked as the generated message chain, so the
+      // second is excluded from the pairing check just as it's excluded from
+      // the generated PlantUML (sequenceWorkspaceToCode's known limitation).
+      const alice = workspace.newBlock("sequence_participant");
+      alice.setFieldValue("Alice", "NAME");
+      const activate = workspace.newBlock("sequence_activate");
+      activate.setFieldValue("Alice", "TARGET");
+      const deactivate = workspace.newBlock("sequence_deactivate");
+      deactivate.setFieldValue("Alice", "TARGET");
+
+      const warnings = validateSequenceWorkspace(workspace);
+      expect(hasWarning(warnings, activate)).toBe(true);
+      expect(hasWarning(warnings, deactivate)).toBe(false);
+    });
+
+    it("combines a reference warning and a pairing warning on the same block", () => {
+      const deactivate = workspace.newBlock("sequence_deactivate");
+      deactivate.setFieldValue("Ghost", "TARGET");
+
+      const warnings = validateSequenceWorkspace(workspace);
+      const warning = warnings.find((w) => w.blockId === deactivate.id);
+      expect(warning?.message).toContain("References a participant that doesn't exist");
+      expect(warning?.message).toContain("never activated");
+    });
   });
 });
