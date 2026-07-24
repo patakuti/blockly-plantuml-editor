@@ -131,4 +131,54 @@ describe("validateActivityWorkspace", () => {
     start.nextConnection!.connect(swimlane.previousConnection!);
     expect(hasWarning(validateActivityWorkspace(workspace), swimlane)).toBe(false);
   });
+
+  describe("unreachable blocks of any type (FR-ACT-17, generalized from FR-ACT-16)", () => {
+    it("warns about a non-swimlane block placed standalone, connected to nothing", () => {
+      workspace.newBlock("activity_start");
+      const action = workspace.newBlock("activity_action");
+
+      expect(hasWarning(validateActivityWorkspace(workspace), action)).toBe(true);
+    });
+
+    it("warns about every block on a disconnected, dropped alternate chain, including inside a container", () => {
+      workspace.newBlock("activity_start"); // the chain that's actually picked as output
+      const ifBlock = workspace.newBlock("activity_if");
+      const nestedAction = workspace.newBlock("activity_action");
+      ifBlock.getInput("DO0")!.connection!.connect(nestedAction.previousConnection!);
+
+      const warnings = validateActivityWorkspace(workspace);
+      expect(hasWarning(warnings, ifBlock)).toBe(true);
+      expect(hasWarning(warnings, nestedAction)).toBe(true);
+    });
+
+    it("does not warn about a non-swimlane block connected into the output chain", () => {
+      const start = workspace.newBlock("activity_start");
+      const action = workspace.newBlock("activity_action");
+      start.nextConnection!.connect(action.previousConnection!);
+
+      expect(hasWarning(validateActivityWorkspace(workspace), action)).toBe(false);
+    });
+
+    it("clears the warning once the block is connected into the output chain", () => {
+      const start = workspace.newBlock("activity_start");
+      const action = workspace.newBlock("activity_action");
+      expect(hasWarning(validateActivityWorkspace(workspace), action)).toBe(true);
+
+      start.nextConnection!.connect(action.previousConnection!);
+      expect(hasWarning(validateActivityWorkspace(workspace), action)).toBe(false);
+    });
+
+    it("warns with both messages when a duplicate start's own chain is also unreachable", () => {
+      workspace.newBlock("activity_start"); // the chain that's actually picked as output
+      const start2 = workspace.newBlock("activity_start");
+      const action = workspace.newBlock("activity_action");
+      start2.nextConnection!.connect(action.previousConnection!);
+
+      const warnings = validateActivityWorkspace(workspace);
+      const warning = warnings.find((w) => w.blockId === start2.id);
+      expect(warning?.message).toContain("Only one start block is allowed");
+      expect(warning?.message).toContain("isn't part of the diagram's output chain");
+      expect(hasWarning(warnings, action)).toBe(true);
+    });
+  });
 });
