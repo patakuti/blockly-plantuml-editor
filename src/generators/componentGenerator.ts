@@ -1,6 +1,6 @@
 import * as Blockly from "blockly/core";
 import { generateStatements } from "./common/statementGenerator";
-import { escapeText } from "./common/escape";
+import { escapeText, escapeQuotedName } from "./common/escape";
 
 export const componentGenerator = new Blockly.CodeGenerator("PlantUMLComponent");
 
@@ -10,14 +10,14 @@ export const componentGenerator = new Blockly.CodeGenerator("PlantUMLComponent")
  * generation (02_design.md 27.5) rather than conditionally omitting them.
  */
 componentGenerator.forBlock["component_component"] = (block, generator) => {
-  const name = escapeText(block.getFieldValue("NAME"));
+  const name = escapeQuotedName(block.getFieldValue("NAME"));
   const body = generateStatements(generator, block.getInputTargetBlock("DO"));
   return `component "${name}" {\n${body}}\n`;
 };
 
 componentGenerator.forBlock["component_dependency"] = (block) => {
-  const from = escapeText(block.getFieldValue("FROM"));
-  const to = escapeText(block.getFieldValue("TO"));
+  const from = escapeQuotedName(block.getFieldValue("FROM"));
+  const to = escapeQuotedName(block.getFieldValue("TO"));
   const text = block.getFieldValue("TEXT");
   return text ? `"${from}" --> "${to}" : ${escapeText(text)}\n` : `"${from}" --> "${to}"\n`;
 };

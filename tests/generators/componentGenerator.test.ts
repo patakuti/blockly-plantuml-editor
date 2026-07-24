@@ -62,6 +62,23 @@ describe("componentWorkspaceToCode", () => {
     expect(componentWorkspaceToCode(workspace)).toBe('@startuml\ninterface "Foo"\n@enduml\n');
   });
 
+  it("escapes quotes/@ in component names and @ in dependency labels", () => {
+    const component = workspace.newBlock("component_component");
+    component.setFieldValue('Ali"ce @enduml', "NAME");
+
+    const dependency = workspace.newBlock("component_dependency");
+    dependency.setFieldValue('Ali"ce @enduml', "FROM");
+    dependency.setFieldValue('Ali"ce @enduml', "TO");
+    dependency.setFieldValue("say @enduml now", "TEXT");
+
+    expect(componentWorkspaceToCode(workspace)).toBe(
+      "@startuml\n" +
+        "component \"Ali'ce &#64;enduml\" {\n}\n" +
+        "\"Ali'ce &#64;enduml\" --> \"Ali'ce &#64;enduml\" : say &#64;enduml now\n" +
+        "@enduml\n",
+    );
+  });
+
   it("includes every disconnected top-level chain, not just one", () => {
     const componentA = workspace.newBlock("component_component");
     componentA.setFieldValue("A", "NAME");
