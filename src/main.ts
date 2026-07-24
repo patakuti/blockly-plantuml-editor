@@ -25,6 +25,8 @@ import { defineComponentBlocks } from "./blocks/component/blocks";
 import { componentToolbox } from "./blocks/component/toolbox";
 import { componentGenerator, componentWorkspaceToCode } from "./generators/componentGenerator";
 import { validateComponentWorkspace } from "./blocks/component/validation";
+import { syncComponentRename } from "./blocks/component/renameSync";
+import { applyComponentAutoDefault } from "./blocks/component/autoDefault";
 import { guardDuplicateRename, resolveDuplicateNamesOnCreate } from "./blocks/common/duplicateName";
 import { trackBlockCreate, isEligible, forgetBlocks } from "./blocks/common/autoDefaultTracking";
 import { getBlockOwnCode } from "./generators/common/blockSnippet";
@@ -150,7 +152,9 @@ const diagramConfigs: DiagramConfig[] = [
     jsonFilename: "component-diagram.json",
     plantUmlFilename: "component-diagram.puml",
     onValidate: validateComponentWorkspace,
+    onFieldChange: syncComponentRename,
     nameOwnerTypes: new Set(["component_component"]),
+    autoDefaultOnConnect: applyComponentAutoDefault,
     openImportDialog: (workspace) =>
       openImportDialog(workspace, {
         title: "Import PlantUML (Component Diagram)",
