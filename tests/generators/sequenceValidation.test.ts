@@ -217,6 +217,8 @@ describe("validateSequenceWorkspace", () => {
       // (created first) is picked as the generated message chain, so the
       // second is excluded from the pairing check just as it's excluded from
       // the generated PlantUML (sequenceWorkspaceToCode's known limitation).
+      // It still gets its own warning now (FR-SEQ-21): it genuinely won't
+      // appear in the generated output, just not a pairing-specific one.
       const alice = workspace.newBlock("sequence_participant");
       alice.setFieldValue("Alice", "NAME");
       const activate = workspace.newBlock("sequence_activate");
@@ -225,8 +227,10 @@ describe("validateSequenceWorkspace", () => {
       deactivate.setFieldValue("Alice", "TARGET");
 
       const warnings = validateSequenceWorkspace(workspace);
-      expect(hasWarning(warnings, activate)).toBe(true);
-      expect(hasWarning(warnings, deactivate)).toBe(false);
+      expect(warnings.find((w) => w.blockId === activate.id)?.message).toContain("never deactivated");
+      expect(warnings.find((w) => w.blockId === deactivate.id)?.message).toContain(
+        "isn't part of the diagram's output chain",
+      );
     });
 
     it("combines a reference warning and a pairing warning on the same block", () => {
@@ -237,6 +241,83 @@ describe("validateSequenceWorkspace", () => {
       const warning = warnings.find((w) => w.blockId === deactivate.id);
       expect(warning?.message).toContain("References a participant that doesn't exist");
       expect(warning?.message).toContain("never activated");
+    });
+  });
+
+  describe("unreachable blocks of any type (FR-SEQ-21, generalized from FR-ACT-17)", () => {
+    function chain(...blocks: Blockly.Block[]): Blockly.Block[] {
+      for (let i = 0; i < blocks.length - 1; i++) {
+        blocks[i].nextConnection!.connect(blocks[i + 1].previousConnection!);
+      }
+      return blocks;
+    }
+
+    it("warns about a message placed standalone, connected to nothing", () => {
+      const alice = workspace.newBlock("sequence_participant");
+      alice.setFieldValue("Alice", "NAME");
+      const message = workspace.newBlock("sequence_message"); // the chain that's actually picked as output
+      message.setFieldValue("Alice", "FROM");
+      message.setFieldValue("Alice", "TO");
+
+      const other = workspace.newBlock("sequence_note");
+      other.setFieldValue("Alice", "TARGET");
+
+      expect(hasWarning(validateSequenceWorkspace(workspace), other)).toBe(true);
+    });
+
+    it("warns about every block on a disconnected, dropped alternate chain, including inside a container", () => {
+      const alice = workspace.newBlock("sequence_participant");
+      alice.setFieldValue("Alice", "NAME");
+      const message = workspace.newBlock("sequence_message"); // the chain that's actually picked as output
+      message.setFieldValue("Alice", "FROM");
+      message.setFieldValue("Alice", "TO");
+
+      const alt = workspace.newBlock("sequence_alt");
+      const nestedNote = workspace.newBlock("sequence_note");
+      nestedNote.setFieldValue("Alice", "TARGET");
+      alt.getInput("DO0")!.connection!.connect(nestedNote.previousConnection!);
+
+      const warnings = validateSequenceWorkspace(workspace);
+      expect(hasWarning(warnings, alt)).toBe(true);
+      expect(hasWarning(warnings, nestedNote)).toBe(true);
+    });
+
+    it("does not warn about a block connected into the output chain", () => {
+      const alice = workspace.newBlock("sequence_participant");
+      alice.setFieldValue("Alice", "NAME");
+      const message = workspace.newBlock("sequence_message");
+      message.setFieldValue("Alice", "FROM");
+      message.setFieldValue("Alice", "TO");
+      const note = workspace.newBlock("sequence_note");
+      note.setFieldValue("Alice", "TARGET");
+      chain(message, note);
+
+      expect(hasWarning(validateSequenceWorkspace(workspace), note)).toBe(false);
+    });
+
+    it("clears the warning once the block is connected into the output chain", () => {
+      const alice = workspace.newBlock("sequence_participant");
+      alice.setFieldValue("Alice", "NAME");
+      const message = workspace.newBlock("sequence_message");
+      message.setFieldValue("Alice", "FROM");
+      message.setFieldValue("Alice", "TO");
+      const note = workspace.newBlock("sequence_note");
+      note.setFieldValue("Alice", "TARGET");
+      expect(hasWarning(validateSequenceWorkspace(workspace), note)).toBe(true);
+
+      chain(message, note);
+      expect(hasWarning(validateSequenceWorkspace(workspace), note)).toBe(false);
+    });
+
+    it("never flags Participant/Actor declarations, even when disconnected from each other", () => {
+      const alice = workspace.newBlock("sequence_participant");
+      alice.setFieldValue("Alice", "NAME");
+      const bob = workspace.newBlock("sequence_actor");
+      bob.setFieldValue("Bob", "NAME");
+
+      const warnings = validateSequenceWorkspace(workspace);
+      expect(hasWarning(warnings, alice)).toBe(false);
+      expect(hasWarning(warnings, bob)).toBe(false);
     });
   });
 });

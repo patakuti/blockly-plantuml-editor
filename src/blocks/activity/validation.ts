@@ -39,46 +39,53 @@ function activityNestedHeads(block: Blockly.Block): (Blockly.Block | null)[] {
  *   a swimlane name that no longer has a matching `activity_swimlane` block
  *   (renamed/deleted after being picked), the same "stale reference" pattern
  *   as sequence/validation.ts's REFERENCE_FIELDS check.
- * - flags an `activity_swimlane` block that falls outside the single chain
- *   activityWorkspaceToCode actually generates from (02_design.md 32.6,
- *   FR-ACT-16) -- e.g. sitting on a disconnected, dropped alternate chain,
- *   or placed standalone. Such a block contributes nothing to the generated
- *   PlantUML even though it still shows up as a pin candidate in Start's
- *   SWIMLANE dropdown (swimlaneOptions scans the whole workspace).
+ * - flags any block that falls outside the single chain
+ *   activityWorkspaceToCode actually generates from (02_design.md 32.6/36.2,
+ *   FR-ACT-17, generalized from FR-ACT-16's Swimlane-only version) -- e.g.
+ *   sitting on a disconnected, dropped alternate chain, or placed standalone.
+ *   Such a block contributes nothing to the generated PlantUML. A second,
+ *   unpicked activity_start can be flagged by both this and the duplicate
+ *   check above, so messages are accumulated per block ID and
+ *   setWarningText() is only called once per block (same pattern as
+ *   sequence/validation.ts's Round 23 fix for the same kind of overlap).
  */
 export function validateActivityWorkspace(workspace: Blockly.Workspace): ActivityWarning[] {
-  const warnings: ActivityWarning[] = [];
+  const messages = new Map<string, string[]>();
+  const addMessage = (block: Blockly.Block, message: string) => {
+    messages.set(block.id, [...(messages.get(block.id) ?? []), message]);
+  };
+
   const startBlocks = workspace.getBlocksByType("activity_start", false);
-  const swimlaneBlocks = workspace.getBlocksByType("activity_swimlane", false);
-  const swimlaneNames = new Set(swimlaneBlocks.map((b) => b.getFieldValue("NAME") as string));
+  const swimlaneNames = new Set(
+    workspace.getBlocksByType("activity_swimlane", false).map((b) => b.getFieldValue("NAME") as string),
+  );
 
   const duplicateMessage =
     startBlocks.length > 1 ? `Only one start block is allowed; found ${startBlocks.length}.` : null;
 
   for (const block of startBlocks) {
-    const issues: string[] = [];
-    if (duplicateMessage) issues.push(duplicateMessage);
+    if (duplicateMessage) addMessage(block, duplicateMessage);
 
     const swimlane = block.getFieldValue("SWIMLANE") as string;
     if (swimlane && !swimlaneNames.has(swimlane)) {
-      issues.push(`References a swimlane that doesn't exist: SWIMLANE="${swimlane}"`);
+      addMessage(block, `References a swimlane that doesn't exist: SWIMLANE="${swimlane}"`);
     }
-
-    const message = issues.length > 0 ? issues.join("\n") : null;
-    block.setWarningText(message);
-    if (message) warnings.push({ blockId: block.id, message });
   }
 
   const reachable = new Set(
     flattenChain(pickActivityOutputChainHead(workspace), activityNestedHeads).map((b) => b.id),
   );
-  for (const block of swimlaneBlocks) {
-    const message = reachable.has(block.id)
-      ? null
-      : "This swimlane isn't part of the diagram's output chain, so it won't appear in the generated PlantUML.";
-    block.setWarningText(message);
-    if (message) warnings.push({ blockId: block.id, message });
+  for (const block of workspace.getAllBlocks(false)) {
+    if (!reachable.has(block.id)) {
+      addMessage(block, "This block isn't part of the diagram's output chain, so it won't appear in the generated PlantUML.");
+    }
   }
 
+  const warnings: ActivityWarning[] = [];
+  for (const block of workspace.getAllBlocks(false)) {
+    const combined = messages.get(block.id)?.join("\n") ?? null;
+    block.setWarningText(combined);
+    if (combined) warnings.push({ blockId: block.id, message: combined });
+  }
   return warnings;
 }

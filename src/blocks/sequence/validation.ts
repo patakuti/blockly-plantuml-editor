@@ -1,6 +1,7 @@
 import * as Blockly from "blockly/core";
 import { PARTICIPANT_LIKE_TYPES } from "./constants";
 import { pickSequenceMessageChainHead } from "../../generators/sequenceGenerator";
+import { flattenChain } from "../common/statementOrder";
 
 /** Block types + field names that hold a participant name reference (FR-SEQ-07). */
 export const REFERENCE_FIELDS: Record<string, string[]> = {
@@ -23,15 +24,20 @@ export interface SequenceWarning {
  * Re-validates the whole sequence workspace: flags message/note/activate/
  * deactivate blocks that reference a participant no longer declared
  * (FR-SEQ-07), flags alt/opt/loop blocks nested deeper than a readability
- * threshold (FR-SEQ-09), and flags activate/deactivate blocks whose pairing
- * is broken (FR-SEQ-20). Cheap enough to run on every non-UI change; no
- * incremental diffing needed at this workspace scale.
+ * threshold (FR-SEQ-09), flags activate/deactivate blocks whose pairing is
+ * broken (FR-SEQ-20), and flags any non-Participant/Actor block that falls
+ * outside the single message chain sequenceWorkspaceToCode actually
+ * generates from (FR-SEQ-21, generalized from activity/validation.ts's
+ * FR-ACT-17 -- Participant/Actor are exempt since 4.6章 guarantees every
+ * declaration chain gets concatenated, never dropped). Cheap enough to run
+ * on every non-UI change; no incremental diffing needed at this workspace
+ * scale.
  *
- * sequence_activate/sequence_deactivate are checked by two independent
- * categories (reference + pairing), so messages are accumulated per block ID
- * and setWarningText() is called once per block at the end -- calling it
- * separately from each category would let the second call silently discard
- * the first (02_design.md 33.4).
+ * sequence_activate/sequence_deactivate can be checked by more than one
+ * category (reference + pairing + reachability), so messages are
+ * accumulated per block ID and setWarningText() is called once per block at
+ * the end -- calling it separately from each category would let the later
+ * call silently discard the earlier one (02_design.md 33.4).
  *
  * setWarningText() is a no-op on a headless (non-rendered) Block -- only
  * BlockSvg actually creates the warning icon -- so the found warnings are
@@ -77,6 +83,23 @@ export function validateSequenceWorkspace(workspace: Blockly.Workspace): Sequenc
   }
 
   checkActivationPairing(workspace, addMessage);
+
+  // FR-SEQ-21: uses the shared flattenChain (not walkInGenerationOrder below) because this
+  // check is about topological connectivity -- "is this block connected into the chain at
+  // all" -- regardless of whether it's individually disabled, matching activity/validation.ts's
+  // FR-ACT-17 precedent. walkInGenerationOrder's disabled-skipping is a different, narrower
+  // concern specific to activation pairing (a disabled activate never actually emits code, so
+  // it must not count as opening an activation); the two aren't interchangeable.
+  const reachable = new Set(
+    flattenChain(pickSequenceMessageChainHead(workspace), sequenceNestedHeads).map((b) => b.id),
+  );
+  for (const block of workspace.getAllBlocks(false)) {
+    if ((PARTICIPANT_LIKE_TYPES as readonly string[]).includes(block.type)) continue; // never dropped, 4.6章
+    blocksById.set(block.id, block);
+    if (!reachable.has(block.id)) {
+      addMessage(block, "This block isn't part of the diagram's output chain, so it won't appear in the generated PlantUML.");
+    }
+  }
 
   const warnings: SequenceWarning[] = [];
   for (const [blockId, block] of blocksById) {
