@@ -38,7 +38,7 @@ describe("nextAvailableName", () => {
 
 describe("guardDuplicateRename (FR-SEQ-14/FR-STATE-10)", () => {
   const SEQUENCE_OWNER_TYPES = new Set(["sequence_participant", "sequence_actor"]);
-  const STATE_OWNER_TYPES = new Set(["state_state", "state_composite", "state_choice"]);
+  const STATE_OWNER_TYPES = new Set(["state_state", "state_composite", "state_choice", "state_fork", "state_join"]);
   let workspace: Blockly.Workspace;
 
   beforeEach(() => {
@@ -119,6 +119,26 @@ describe("guardDuplicateRename (FR-SEQ-14/FR-STATE-10)", () => {
     await flushEvents();
 
     expect(choice.getFieldValue("NAME")).toBe("B");
+  });
+
+  it("treats fork and join as part of the same shared namespace", async () => {
+    workspace.addChangeListener((event) => {
+      if (event instanceof Blockly.Events.BlockChange && event.element === "field") {
+        guardDuplicateRename(workspace, event, STATE_OWNER_TYPES);
+      }
+    });
+
+    const fork = workspace.newBlock("state_fork");
+    fork.setFieldValue("Fork1", "NAME");
+    await flushEvents();
+    const join = workspace.newBlock("state_join");
+    join.setFieldValue("Join1", "NAME");
+    await flushEvents();
+
+    join.setFieldValue("Fork1", "NAME");
+    await flushEvents();
+
+    expect(join.getFieldValue("NAME")).toBe("Join1");
   });
 
   it("reverts a rename to a name already used by another component (FR-COMP-04)", async () => {
@@ -326,7 +346,7 @@ describe("guardDuplicateRename gating onFieldChange (main.ts wiring)", () => {
     // then be treated as an ordinary rename by onFieldChange, silently
     // repointing every Transition that legitimately referenced "Idle" onto
     // the unrelated "State1" block instead.
-    const STATE_OWNER_TYPES = new Set(["state_state", "state_composite", "state_choice"]);
+    const STATE_OWNER_TYPES = new Set(["state_state", "state_composite", "state_choice", "state_fork", "state_join"]);
     const workspace = new Blockly.Workspace();
     workspace.addChangeListener((event) => {
       if (event instanceof Blockly.Events.BlockChange && event.element === "field") {

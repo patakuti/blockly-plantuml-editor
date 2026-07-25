@@ -2,7 +2,7 @@ import * as Blockly from "blockly/core";
 import { REFERENCE_FIELDS } from "./validation";
 import { setFieldValueRefreshingDropdown } from "../common/setDropdownFieldValue";
 
-const NAME_OWNER_TYPES = new Set(["state_state", "state_composite", "state_choice"]);
+const NAME_OWNER_TYPES = new Set(["state_state", "state_composite", "state_choice", "state_fork", "state_join"]);
 
 /**
  * Keeps Transition (FROM/TO) fields in sync when a state_state's,

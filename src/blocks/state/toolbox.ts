@@ -17,6 +17,14 @@ export const stateToolbox: Blockly.utils.toolbox.ToolboxInfo = {
     },
     {
       kind: "block",
+      type: "state_fork",
+    },
+    {
+      kind: "block",
+      type: "state_join",
+    },
+    {
+      kind: "block",
       type: "state_composite",
     },
     {

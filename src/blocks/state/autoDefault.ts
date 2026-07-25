@@ -14,7 +14,13 @@ function stateNestedHeads(block: Blockly.Block): (Blockly.Block | null)[] {
 }
 
 function isNameable(block: Blockly.Block): boolean {
-  return block.type === "state_state" || block.type === "state_composite" || block.type === "state_choice";
+  return (
+    block.type === "state_state" ||
+    block.type === "state_composite" ||
+    block.type === "state_choice" ||
+    block.type === "state_fork" ||
+    block.type === "state_join"
+  );
 }
 
 /**

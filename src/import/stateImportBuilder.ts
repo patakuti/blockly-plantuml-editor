@@ -3,6 +3,7 @@ import type { StateImportedNode } from "./stateImportParser";
 import { setNoteDirection } from "../generators/common/noteWrapper";
 import { setFieldValueRefreshingDropdown } from "../blocks/common/setDropdownFieldValue";
 import { registerIneligible } from "../blocks/common/autoDefaultTracking";
+import { setNameSilently } from "../blocks/common/duplicateName";
 
 /**
  * Turns a parsed node tree (stateImportParser.ts) into real blocks in
@@ -104,13 +105,25 @@ function createBlockForNode(workspace: Blockly.Workspace, node: StateImportedNod
   switch (node.kind) {
     case "state": {
       const block = workspace.newBlock("state_state");
-      block.setFieldValue(node.name, "NAME");
+      setNameSilently(block, node.name);
       return block;
     }
 
     case "choice": {
       const block = workspace.newBlock("state_choice");
-      block.setFieldValue(node.name, "NAME");
+      setNameSilently(block, node.name);
+      return block;
+    }
+
+    case "fork": {
+      const block = workspace.newBlock("state_fork");
+      setNameSilently(block, node.name);
+      return block;
+    }
+
+    case "join": {
+      const block = workspace.newBlock("state_join");
+      setNameSilently(block, node.name);
       return block;
     }
 
@@ -124,7 +137,7 @@ function createBlockForNode(workspace: Blockly.Workspace, node: StateImportedNod
 
     case "composite": {
       const block = workspace.newBlock("state_composite");
-      block.setFieldValue(node.name, "NAME");
+      setNameSilently(block, node.name);
       if (node.regions.length > 1) {
         block.loadExtraState!({ extraRegionCount: node.regions.length - 1 });
       }
