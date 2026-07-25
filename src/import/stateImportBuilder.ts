@@ -140,6 +140,11 @@ function createBlockForNode(workspace: Blockly.Workspace, node: StateImportedNod
       setNameSilently(block, node.name);
       if (node.regions.length > 1) {
         block.loadExtraState!({ extraRegionCount: node.regions.length - 1 });
+        // Only the first separator in the source actually affects PlantUML's
+        // rendering (02_design.md 39.1a), so it's the only one applied; any
+        // later, different separator in a mixed-symbol source is normalized
+        // away on re-export (01_requirements.md 4.26 known limitation).
+        block.setFieldValue(node.separators[0], "SEPARATOR");
       }
       node.regions.forEach((region, index) => {
         attachChain(workspace, block, index === 0 ? "DO" : `REGION${index}`, region);

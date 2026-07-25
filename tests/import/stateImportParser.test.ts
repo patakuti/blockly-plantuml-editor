@@ -48,9 +48,11 @@ describe("parseStatePlantUml", () => {
               kind: "composite",
               name: "Inner",
               regions: [[{ kind: "state", name: "Leaf" }]],
+              separators: [],
             },
           ],
         ],
+        separators: [],
       },
     ]);
   });
@@ -77,6 +79,7 @@ describe("parseStatePlantUml", () => {
         kind: "composite",
         name: "Active",
         regions: [[{ kind: "state", name: "A1" }], [{ kind: "state", name: "A2" }]],
+        separators: ["--"],
       },
     ]);
   });
@@ -92,6 +95,35 @@ describe("parseStatePlantUml", () => {
           [{ kind: "state", name: "A2" }],
           [{ kind: "state", name: "A3" }],
         ],
+        separators: ["--", "--"],
+      },
+    ]);
+  });
+
+  it("parses a composite state with a \"||\" region separator", () => {
+    const source = "state Active {\nstate A1\n||\nstate A2\n}";
+    expect(parseStatePlantUml(source)).toEqual([
+      {
+        kind: "composite",
+        name: "Active",
+        regions: [[{ kind: "state", name: "A1" }], [{ kind: "state", name: "A2" }]],
+        separators: ["||"],
+      },
+    ]);
+  });
+
+  it("parses a composite state mixing \"--\" and \"||\" region separators", () => {
+    const source = "state Active {\nstate A1\n--\nstate A2\n||\nstate A3\n}";
+    expect(parseStatePlantUml(source)).toEqual([
+      {
+        kind: "composite",
+        name: "Active",
+        regions: [
+          [{ kind: "state", name: "A1" }],
+          [{ kind: "state", name: "A2" }],
+          [{ kind: "state", name: "A3" }],
+        ],
+        separators: ["--", "||"],
       },
     ]);
   });
@@ -110,17 +142,7 @@ describe("parseStatePlantUml", () => {
             { kind: "raw", text: "end note" },
           ],
         ],
-      },
-    ]);
-  });
-
-  it("keeps a \"||\" region separator as a raw line rather than splitting a region", () => {
-    const source = "state Active {\nstate A1\n||\nstate A2\n}";
-    expect(parseStatePlantUml(source)).toEqual([
-      {
-        kind: "composite",
-        name: "Active",
-        regions: [[{ kind: "state", name: "A1" }, { kind: "raw", text: "||" }, { kind: "state", name: "A2" }]],
+        separators: ["--"],
       },
     ]);
   });
@@ -178,6 +200,7 @@ describe("parseStatePlantUml", () => {
         kind: "composite",
         name: "A",
         regions: [[{ kind: "state", name: "B" }]],
+        separators: [],
         comment: { text: "line one\nline two", direction: "left" },
       },
     ]);

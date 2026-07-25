@@ -51,13 +51,14 @@ stateGenerator.forBlock["state_transition"] = (block) => {
  */
 stateGenerator.forBlock["state_composite"] = (block, generator) => {
   const name = escapeText(block.getFieldValue("NAME"));
-  const regions = [generateStatements(generator, block.getInputTargetBlock("DO"), stateNoteAnchor)];
+  let body = generateStatements(generator, block.getInputTargetBlock("DO"), stateNoteAnchor);
+  const separator = block.getFieldValue("SEPARATOR") as string;
   let i = 1;
   while (block.getInput(`REGION${i}`)) {
-    regions.push(generateStatements(generator, block.getInputTargetBlock(`REGION${i}`), stateNoteAnchor));
+    body += `${separator}\n${generateStatements(generator, block.getInputTargetBlock(`REGION${i}`), stateNoteAnchor)}`;
     i++;
   }
-  return `state ${name} {\n${regions.join("--\n")}}\n`;
+  return `state ${name} {\n${body}}\n`;
 };
 
 stateGenerator.forBlock["state_raw_line"] = (block) => `${block.getFieldValue("TEXT")}\n`;

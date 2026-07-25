@@ -27,7 +27,7 @@ export type StateImportedNode =
   | { kind: "fork"; name: string; comment?: ImportedComment }
   | { kind: "join"; name: string; comment?: ImportedComment }
   | { kind: "transition"; from: string; to: string; label?: string; comment?: ImportedComment }
-  | { kind: "composite"; name: string; regions: StateImportedNode[][]; comment?: ImportedComment }
+  | { kind: "composite"; name: string; regions: StateImportedNode[][]; separators: string[]; comment?: ImportedComment }
   | { kind: "raw"; text: string; comment?: ImportedComment };
 
 export { PlantUmlImportError };
@@ -38,7 +38,7 @@ const JOIN = /^state\s+(\S+)\s+<<join>>$/i;
 const STATE = /^state\s+(\S+)$/i;
 const COMPOSITE_OPEN = /^state\s+(\S+)\s*\{$/i;
 const COMPOSITE_END = /^\}$/;
-const REGION_SEPARATOR = /^--$/;
+const REGION_SEPARATOR = /^(--|\|\|)$/;
 const TRANSITION = /^(\S+)\s*-->\s*(\S+)(?:\s*:\s*(.*))?$/;
 const NOTE_OF_OPEN = /^note\s+(left|right)\s+of\s+(\S+)$/i;
 
@@ -128,8 +128,12 @@ function attachOrRawifyNote(
  * continues) or the closing "}" (left unconsumed for the caller, same as the
  * pre-Round-12 single-region behavior).
  */
-function parseCompositeBody(cursor: LineCursor, openLine: string): StateImportedNode[][] {
+function parseCompositeBody(
+  cursor: LineCursor,
+  openLine: string,
+): { regions: StateImportedNode[][]; separators: string[] } {
   const regions: StateImportedNode[][] = [];
+  const separators: string[] = [];
   while (true) {
     regions.push(
       parseStatements(
@@ -138,8 +142,8 @@ function parseCompositeBody(cursor: LineCursor, openLine: string): StateImported
         `Missing closing "}" for "${openLine}".`,
       ),
     );
-    if (!REGION_SEPARATOR.test(cursor.peekTrimmed())) return regions;
-    cursor.consumeTrimmed(); // "--"
+    if (!REGION_SEPARATOR.test(cursor.peekTrimmed())) return { regions, separators };
+    separators.push(cursor.consumeTrimmed()); // "--" or "||"
   }
 }
 
@@ -151,9 +155,9 @@ function parseOneStatement(cursor: LineCursor): StateImportedNode {
   if (compositeOpenMatch) {
     cursor.consumeTrimmed();
     const name = unescapeText(compositeOpenMatch[1]);
-    const regions = parseCompositeBody(cursor, `state ${compositeOpenMatch[1]} {`);
+    const { regions, separators } = parseCompositeBody(cursor, `state ${compositeOpenMatch[1]} {`);
     cursor.consumeTrimmed(); // }
-    return { kind: "composite", name, regions };
+    return { kind: "composite", name, regions, separators };
   }
 
   const choiceMatch = CHOICE.exec(trimmed);
