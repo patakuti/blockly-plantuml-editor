@@ -72,6 +72,27 @@ export function setNameSilently(block: Blockly.Block, value: string): void {
 }
 
 /**
+ * Returns true (and clears the tracking) if `value` matches the value this
+ * module is about to force onto `block` via its own corrective
+ * `setNameSilently` call -- i.e. this is that call's own echo, not a real
+ * rename. `guardDuplicateRename` below uses this, but it's also exported
+ * directly for rename-sync listeners that aren't gated behind
+ * `guardDuplicateRename` at all (02_design.md 40.2): activity_swimlane's
+ * names are allowed to collide on purpose (FR-ACT-13), so its diagram
+ * instance has no `nameOwnerTypes` and `guardDuplicateRename` is never
+ * called for it, yet its import builder still needs a way to set a brand-new
+ * block's real name without `syncSwimlaneRename` mistaking that for a user
+ * rename of an unrelated, same-named block.
+ */
+export function isSilentCorrection(block: Blockly.Block, value: string): boolean {
+  if (pendingCorrections.get(block) === value) {
+    pendingCorrections.delete(block);
+    return true;
+  }
+  return false;
+}
+
+/**
  * Rejects a NAME edit that would collide with another block of the same
  * owner-type group (Participant, or State/Composite State/Choice together),
  * reverting the field to its previous value. Also recognizes and swallows
@@ -90,10 +111,7 @@ export function guardDuplicateRename(
   const block = workspace.getBlockById(event.blockId);
   if (!block || !ownerTypes.has(block.type)) return false;
 
-  if (pendingCorrections.get(block) === event.newValue) {
-    pendingCorrections.delete(block);
-    return true;
-  }
+  if (isSilentCorrection(block, event.newValue as string)) return true;
 
   const oldValue = event.oldValue as string;
   const newValue = event.newValue as string;

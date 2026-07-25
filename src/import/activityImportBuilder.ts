@@ -2,6 +2,7 @@ import * as Blockly from "blockly/core";
 import type { ImportedNode } from "./activityImportParser";
 import { setNoteDirection } from "../generators/common/noteWrapper";
 import { setFieldValueRefreshingDropdown } from "../blocks/common/setDropdownFieldValue";
+import { setNameSilently } from "../blocks/common/duplicateName";
 
 /**
  * Turns a parsed node tree (activityImportParser.ts) into real blocks in
@@ -110,7 +111,7 @@ function createBlockForNode(workspace: Blockly.Workspace, node: ImportedNode): B
 
     case "swimlane": {
       const block = workspace.newBlock("activity_swimlane");
-      block.setFieldValue(node.name, "NAME");
+      setNameSilently(block, node.name);
       return block;
     }
 
