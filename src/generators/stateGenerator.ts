@@ -43,6 +43,9 @@ stateGenerator.forBlock["state_transition"] = (block) => {
   return label ? `${from} --> ${to} : ${escapeText(label)}\n` : `${from} --> ${to}\n`;
 };
 
+stateGenerator.forBlock["state_description"] = (block) =>
+  `${escapeText(block.getFieldValue("STATE"))} : ${escapeText(block.getFieldValue("TEXT"))}\n`;
+
 /**
  * DO is the always-present first region; REGION1, REGION2, ... are added by
  * the state_region_mutator (02_design.md 22.3/22.4). With no extra regions

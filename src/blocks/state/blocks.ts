@@ -1,6 +1,7 @@
 import * as Blockly from "blockly/core";
 import { STATE_STATEMENT } from "./constants";
 import { defineStateRegionMutator } from "./regionMutator";
+import { setFieldValueRefreshingDropdown } from "../common/setDropdownFieldValue";
 
 /** The pseudostate token for the start/end of a state diagram (or of a composite state's own region). */
 const PSEUDOSTATE = "[*]";
@@ -25,6 +26,37 @@ const DEEP_HISTORY = "[H*]";
  * can flag the same condition without duplicating the pattern.
  */
 export const INVALID_STATE_NAME_PATTERN = /[ "]/;
+
+/**
+ * Declared State/Composite State/Choice/Fork/Join names, in workspace order.
+ * Excludes the pseudostate marker and history tokens -- unlike Transition's
+ * FROM/TO, State Description's STATE field never references those
+ * (02_design.md 42.2.2).
+ */
+function declaredStateNames(workspace: Blockly.Workspace): string[] {
+  return [
+    ...workspace.getBlocksByType("state_state", true),
+    ...workspace.getBlocksByType("state_composite", true),
+    ...workspace.getBlocksByType("state_choice", true),
+    ...workspace.getBlocksByType("state_fork", true),
+    ...workspace.getBlocksByType("state_join", true),
+  ].map((b) => b.getFieldValue("NAME") as string);
+}
+
+/**
+ * Dropdown options for State Description's STATE field (FR-STATE-19,
+ * 02_design.md 42.2.2). Unlike stateOptions() below, deliberately omits the
+ * pseudostate marker and history tokens: PlantUML's "<name> : text" syntax
+ * describes a declared state, not a pseudostate. Same "(no X)" fallback
+ * shape as sequence/blocks.ts's participantOptions() for the zero-declared
+ * case.
+ */
+function describableStateOptions(this: Blockly.FieldDropdown): Blockly.MenuOption[] {
+  const block = this.getSourceBlock();
+  const names = block ? declaredStateNames(block.workspace) : [];
+  if (names.length === 0) return [["(no states)", ""]];
+  return names.map((name) => [name, name]);
+}
 
 /**
  * Scans the workspace for declared states (state_state, state_composite,
@@ -188,6 +220,28 @@ export function defineStateBlocks(): void {
       this.setTooltip(
         "Transitions from one state to another. Use \"[*]\" for the diagram's start/end pseudostate. Label is optional.",
       );
+    },
+  };
+
+  Blockly.Blocks["state_description"] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput()
+        .appendField(new StateDropdownField(describableStateOptions), "STATE")
+        .appendField(":")
+        .appendField(new Blockly.FieldTextInput(""), "TEXT");
+      this.setPreviousStatement(true, STATE_STATEMENT);
+      this.setNextStatement(true, STATE_STATEMENT);
+      this.setColour(160);
+      this.setTooltip(
+        "Attaches a description line to a state. Add multiple State Description blocks referencing the same state for multiple lines.",
+      );
+
+      // Default STATE to the first declared state so a freshly dropped block
+      // renders immediately (same reasoning as sequence_note's TARGET default,
+      // blocks/sequence/blocks.ts). A saved workspace's actual value, if any,
+      // is applied by the deserializer right after this and overrides it.
+      const names = declaredStateNames(this.workspace);
+      if (names.length > 0) setFieldValueRefreshingDropdown(this, "STATE", names[0]);
     },
   };
 }

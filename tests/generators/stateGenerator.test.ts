@@ -269,6 +269,38 @@ describe("stateWorkspaceToCode", () => {
       "@startuml\nstate Active {\n--\nstate Inner {\nstate Sub1\n}\n}\n@enduml\n",
     );
   });
+
+  describe("state_description (FR-STATE-19, Round 32)", () => {
+    it("generates a description line", () => {
+      const state = workspace.newBlock("state_state");
+      state.setFieldValue("State1", "NAME");
+      const description = workspace.newBlock("state_description");
+      description.setFieldValue("State1", "STATE");
+      description.setFieldValue("this is a description", "TEXT");
+      state.nextConnection!.connect(description.previousConnection!);
+
+      expect(stateWorkspaceToCode(workspace)).toBe(
+        "@startuml\nstate State1\nState1 : this is a description\n@enduml\n",
+      );
+    });
+
+    it("generates multiple lines for multiple blocks referencing the same state", () => {
+      const state = workspace.newBlock("state_state");
+      state.setFieldValue("State1", "NAME");
+      const d1 = workspace.newBlock("state_description");
+      d1.setFieldValue("State1", "STATE");
+      d1.setFieldValue("line1", "TEXT");
+      const d2 = workspace.newBlock("state_description");
+      d2.setFieldValue("State1", "STATE");
+      d2.setFieldValue("line2", "TEXT");
+      state.nextConnection!.connect(d1.previousConnection!);
+      d1.nextConnection!.connect(d2.previousConnection!);
+
+      expect(stateWorkspaceToCode(workspace)).toBe(
+        "@startuml\nstate State1\nState1 : line1\nState1 : line2\n@enduml\n",
+      );
+    });
+  });
 });
 
 describe("validateStateWorkspace", () => {
@@ -378,6 +410,36 @@ describe("validateStateWorkspace", () => {
       const warnings = validateStateWorkspace(workspace);
       expect(warnings).toHaveLength(1);
       expect(warnings[0].message).toContain('TO="Plain[H]"');
+    });
+  });
+
+  describe("state_description reference validation (FR-STATE-20, Round 32)", () => {
+    it("does not warn when STATE references a declared state", () => {
+      const state = workspace.newBlock("state_state");
+      state.setFieldValue("State1", "NAME");
+      const description = workspace.newBlock("state_description");
+      description.setFieldValue("State1", "STATE");
+
+      expect(validateStateWorkspace(workspace)).toEqual([]);
+    });
+
+    it("warns when STATE references a state that doesn't exist", () => {
+      const description = workspace.newBlock("state_description");
+      description.setFieldValue("Ghost", "STATE");
+
+      const warnings = validateStateWorkspace(workspace);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0].blockId).toBe(description.id);
+      expect(warnings[0].message).toContain('STATE="Ghost"');
+    });
+
+    it("warns when STATE references \"[*]\" (unlike Transition, the pseudostate is not a valid target)", () => {
+      const description = workspace.newBlock("state_description");
+      description.setFieldValue("[*]", "STATE");
+
+      const warnings = validateStateWorkspace(workspace);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0].message).toContain('STATE="[*]"');
     });
   });
 
