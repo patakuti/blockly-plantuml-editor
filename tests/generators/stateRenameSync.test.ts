@@ -112,6 +112,20 @@ describe("syncStateRename (FR-STATE-07)", () => {
     expect(transition.getField("TO")!.getText()).toBe("JoinA");
   });
 
+  it("updates State Description's STATE when the referenced state is renamed (FR-STATE-20, Round 32)", async () => {
+    const stateA = workspace.newBlock("state_state");
+    stateA.setFieldValue("StateA", "NAME");
+
+    const description = workspace.newBlock("state_description");
+    description.setFieldValue("StateA", "STATE");
+
+    stateA.setFieldValue("StateAlpha", "NAME");
+    await flushEvents();
+
+    expect(description.getFieldValue("STATE")).toBe("StateAlpha");
+    expect(description.getField("STATE")!.getText()).toBe("StateAlpha");
+  });
+
   it("does not touch references to a different state or the pseudostate", async () => {
     const stateA = workspace.newBlock("state_state");
     stateA.setFieldValue("StateA", "NAME");

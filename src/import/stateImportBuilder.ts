@@ -25,7 +25,7 @@ export function buildStateWorkspace(workspace: Blockly.Workspace, nodes: StateIm
   try {
     workspace.clear();
     buildChain(workspace, nodes);
-    refreshTransitionDropdownText(workspace);
+    refreshReferenceDropdownText(workspace);
   } finally {
     Blockly.Events.setGroup(false);
   }
@@ -33,24 +33,27 @@ export function buildStateWorkspace(workspace: Blockly.Workspace, nodes: StateIm
 
 /**
  * State/Composite/Choice names have no declaration-order constraint
- * (02_design.md 18.2), so a Transition can reference one that's declared
- * later in the source and therefore doesn't exist in the workspace yet when
- * that Transition block is built (buildChain/attachChain build in one
- * single pass, in source order). setFieldValueRefreshingDropdown's cache
- * refresh only helps against *stale* options; it can't include an option
- * for a block that hasn't been created yet, so such a Transition's on-screen
- * FROM/TO label is wrong immediately after import even though the
- * underlying field value (and therefore stateWorkspaceToCode's output) is
- * already correct. Once every node is built, all names exist, so a second
- * refresh pass over every Transition fixes the display without touching any
- * value (confirmed live in a running WorkspaceSvg, not just headless: the
- * generated PlantUML text was correct throughout, only the dropdown label
- * was stale).
+ * (02_design.md 18.2), so a Transition (or, since Round 32, a State
+ * Description) can reference one that's declared later in the source and
+ * therefore doesn't exist in the workspace yet when that block is built
+ * (buildChain/attachChain build in one single pass, in source order).
+ * setFieldValueRefreshingDropdown's cache refresh only helps against *stale*
+ * options; it can't include an option for a block that hasn't been created
+ * yet, so such a reference's on-screen dropdown label is wrong immediately
+ * after import even though the underlying field value (and therefore
+ * stateWorkspaceToCode's output) is already correct. Once every node is
+ * built, all names exist, so a second refresh pass over every referencing
+ * block fixes the display without touching any value (confirmed live in a
+ * running WorkspaceSvg, not just headless: the generated PlantUML text was
+ * correct throughout, only the dropdown label was stale).
  */
-function refreshTransitionDropdownText(workspace: Blockly.Workspace): void {
+function refreshReferenceDropdownText(workspace: Blockly.Workspace): void {
   for (const block of workspace.getBlocksByType("state_transition", false)) {
     setFieldValueRefreshingDropdown(block, "FROM", block.getFieldValue("FROM"));
     setFieldValueRefreshingDropdown(block, "TO", block.getFieldValue("TO"));
+  }
+  for (const block of workspace.getBlocksByType("state_description", false)) {
+    setFieldValueRefreshingDropdown(block, "STATE", block.getFieldValue("STATE"));
   }
 }
 
@@ -132,6 +135,13 @@ function createBlockForNode(workspace: Blockly.Workspace, node: StateImportedNod
       setFieldValueRefreshingDropdown(block, "FROM", node.from);
       setFieldValueRefreshingDropdown(block, "TO", node.to);
       block.setFieldValue(node.label ?? "", "LABEL");
+      return block;
+    }
+
+    case "description": {
+      const block = workspace.newBlock("state_description");
+      setFieldValueRefreshingDropdown(block, "STATE", node.state);
+      block.setFieldValue(node.text, "TEXT");
       return block;
     }
 

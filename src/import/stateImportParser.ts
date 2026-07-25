@@ -27,6 +27,7 @@ export type StateImportedNode =
   | { kind: "fork"; name: string; comment?: ImportedComment }
   | { kind: "join"; name: string; comment?: ImportedComment }
   | { kind: "transition"; from: string; to: string; label?: string; comment?: ImportedComment }
+  | { kind: "description"; state: string; text: string; comment?: ImportedComment }
   | { kind: "composite"; name: string; regions: StateImportedNode[][]; separators: string[]; comment?: ImportedComment }
   | { kind: "raw"; text: string; comment?: ImportedComment };
 
@@ -40,6 +41,8 @@ const COMPOSITE_OPEN = /^state\s+(\S+)\s*\{$/i;
 const COMPOSITE_END = /^\}$/;
 const REGION_SEPARATOR = /^(--|\|\|)$/;
 const TRANSITION = /^(\S+)\s*-->\s*(\S+)(?:\s*:\s*(.*))?$/;
+/** "<name> : text" (FR-STATE-19). Never collides with TRANSITION: that regex requires a literal "-->" which this one doesn't have. */
+const DESCRIPTION = /^(\S+)\s*:\s*(.*)$/;
 const NOTE_OF_OPEN = /^note\s+(left|right)\s+of\s+(\S+)$/i;
 
 /**
@@ -182,6 +185,12 @@ function parseOneStatement(cursor: LineCursor): StateImportedNode {
   if (stateMatch) {
     cursor.consumeTrimmed();
     return { kind: "state", name: unescapeText(stateMatch[1]) };
+  }
+
+  const descriptionMatch = DESCRIPTION.exec(trimmed);
+  if (descriptionMatch) {
+    cursor.consumeTrimmed();
+    return { kind: "description", state: unescapeText(descriptionMatch[1]), text: unescapeText(descriptionMatch[2]) };
   }
 
   const transitionMatch = TRANSITION.exec(trimmed);

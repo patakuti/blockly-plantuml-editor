@@ -65,6 +65,21 @@ describe("state PlantUML import round-trip", () => {
     expect(roundTrip(text)).toBe(text);
   });
 
+  it("round-trips a state description line (FR-STATE-19, Round 32)", () => {
+    const text = "@startuml\nstate State1\nState1 : this is a description\n@enduml\n";
+    expect(roundTrip(text)).toBe(text);
+  });
+
+  it("round-trips multiple description lines referencing the same state", () => {
+    const text = "@startuml\nstate State1\nState1 : line1\nState1 : line2\n@enduml\n";
+    expect(roundTrip(text)).toBe(text);
+  });
+
+  it("round-trips a description line whose referenced state is declared later in the source", () => {
+    const text = "@startuml\nState1 : a description\nstate State1\n@enduml\n";
+    expect(roundTrip(text)).toBe(text);
+  });
+
   it("round-trips a full diagram combining states, transitions, and a composite", () => {
     const text =
       "@startuml\n" +

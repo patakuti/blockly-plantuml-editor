@@ -36,6 +36,31 @@ describe("parseStatePlantUml", () => {
     ]);
   });
 
+  it("parses a state description line (FR-STATE-19, Round 32)", () => {
+    const source = "state State1\nState1 : this is a description";
+    expect(parseStatePlantUml(source)).toEqual([
+      { kind: "state", name: "State1" },
+      { kind: "description", state: "State1", text: "this is a description" },
+    ]);
+  });
+
+  it("parses multiple description lines referencing the same state", () => {
+    const source = "state State1\nState1 : line1\nState1 : line2";
+    expect(parseStatePlantUml(source)).toEqual([
+      { kind: "state", name: "State1" },
+      { kind: "description", state: "State1", text: "line1" },
+      { kind: "description", state: "State1", text: "line2" },
+    ]);
+  });
+
+  it("does not confuse a description line with a transition", () => {
+    const source = "State1 --> State2 : go\nState1 : a description";
+    expect(parseStatePlantUml(source)).toEqual([
+      { kind: "transition", from: "State1", to: "State2", label: "go" },
+      { kind: "description", state: "State1", text: "a description" },
+    ]);
+  });
+
   it("parses a composite state, including nested composite states", () => {
     const source = "state Outer {\nstate Inner {\nstate Leaf\n}\n}";
     expect(parseStatePlantUml(source)).toEqual([

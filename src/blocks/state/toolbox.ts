@@ -29,6 +29,10 @@ export const stateToolbox: Blockly.utils.toolbox.ToolboxInfo = {
     },
     {
       kind: "block",
+      type: "state_description",
+    },
+    {
+      kind: "block",
       type: "state_raw_line",
     },
   ],

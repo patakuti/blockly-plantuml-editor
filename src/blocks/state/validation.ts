@@ -1,9 +1,10 @@
 import * as Blockly from "blockly/core";
 import { INVALID_STATE_NAME_PATTERN } from "./blocks";
 
-/** Block types + field names that hold a state name reference (FR-STATE-06). */
+/** Block types + field names that hold a state name reference (FR-STATE-06/FR-STATE-20). */
 export const REFERENCE_FIELDS: Record<string, string[]> = {
   state_transition: ["FROM", "TO"],
+  state_description: ["STATE"],
 };
 
 /** Block types whose NAME is emitted as a bare PlantUML identifier (FR-STATE-13). */
@@ -22,7 +23,19 @@ const SHALLOW_HISTORY = "[H]";
 const DEEP_HISTORY = "[H*]";
 const HISTORY_REFERENCE = /^(.+)\[H\*?\]$/;
 
-function isValidReference(value: string, stateNames: ReadonlySet<string>, compositeNames: ReadonlySet<string>): boolean {
+/**
+ * State Description's STATE field (FR-STATE-19/20) doesn't accept the
+ * pseudostate marker or history tokens -- PlantUML's "<name> : text" syntax
+ * describes a declared state, not a pseudostate -- so it's excluded via
+ * allowPseudostate=false, unlike Transition's FROM/TO.
+ */
+function isValidReference(
+  value: string,
+  stateNames: ReadonlySet<string>,
+  compositeNames: ReadonlySet<string>,
+  allowPseudostate: boolean,
+): boolean {
+  if (!allowPseudostate) return stateNames.has(value);
   if (value === PSEUDOSTATE || value === SHALLOW_HISTORY || value === DEEP_HISTORY) return true;
   const historyMatch = HISTORY_REFERENCE.exec(value);
   if (historyMatch) return compositeNames.has(historyMatch[1]);
@@ -60,9 +73,10 @@ export function validateStateWorkspace(workspace: Blockly.Workspace): StateWarni
   );
 
   for (const [blockType, fields] of Object.entries(REFERENCE_FIELDS)) {
+    const allowPseudostate = blockType !== "state_description";
     for (const block of workspace.getBlocksByType(blockType, false)) {
       const missing = fields.filter(
-        (field) => !isValidReference(block.getFieldValue(field), stateNames, compositeNames),
+        (field) => !isValidReference(block.getFieldValue(field), stateNames, compositeNames, allowPseudostate),
       );
       const message =
         missing.length > 0
