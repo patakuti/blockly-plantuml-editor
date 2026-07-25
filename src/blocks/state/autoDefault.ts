@@ -1,17 +1,6 @@
 import * as Blockly from "blockly/core";
-import { flattenChain } from "../common/statementOrder";
 import { setFieldValueRefreshingDropdown } from "../common/setDropdownFieldValue";
 import { consumeEligibility } from "../common/autoDefaultTracking";
-
-/** Nested statement chains, in PlantUML output order, for Composite State (DO + each REGION_i). */
-function stateNestedHeads(block: Blockly.Block): (Blockly.Block | null)[] {
-  if (block.type !== "state_composite") return [];
-  const heads = [block.getInputTargetBlock("DO")];
-  for (let i = 1; block.getInput(`REGION${i}`); i++) {
-    heads.push(block.getInputTargetBlock(`REGION${i}`));
-  }
-  return heads;
-}
 
 function isNameable(block: Blockly.Block): boolean {
   return (
@@ -24,13 +13,49 @@ function isNameable(block: Blockly.Block): boolean {
 }
 
 /**
- * FR-STATE-11 (02_design.md 24.8): when a genuinely new Transition makes its
- * first *actual* connection (previous or next, including into a Composite
- * State's DO/REGION input), default FROM to the name of the nearest
- * preceding State/Composite State/Choice and TO to the nearest following
- * one, in PlantUML output order -- searched only within the Transition's own
- * connected tree (`getRootBlock()`), never crossing into a separate,
- * unrelated top-level chain (02_design.md 24.13).
+ * Nearest preceding State/Composite State/Choice/Fork/Join name, in the same
+ * connected chain as `block` -- never crossing into a Composite State's own
+ * outer scope. `[*]` when nothing is found, or when the search reaches the
+ * head of a Composite State's DO/REGION_i body: `getPreviousBlock()` returns
+ * the enclosing Composite State itself in that case (its previousConnection
+ * target is reached via the DO/REGION_i input, not a true previous sibling),
+ * and `getSurroundParent()` confirms it (02_design.md 43.2 -- verified
+ * against Blockly's own `block.ts` source, not assumed).
+ */
+function scanBackward(block: Blockly.Block): string {
+  let cur: Blockly.Block = block;
+  for (;;) {
+    const prev = cur.getPreviousBlock();
+    if (prev === null || prev === cur.getSurroundParent()) return "[*]";
+    if (prev.type !== "state_transition") {
+      return isNameable(prev) ? (prev.getFieldValue("NAME") as string) : "[*]";
+    }
+    cur = prev;
+  }
+}
+
+/** Symmetric forward search. getNextBlock() never leaks into the parent (02_design.md 43.2), so no boundary check is needed here. */
+function scanForward(block: Blockly.Block): string {
+  let cur: Blockly.Block = block;
+  for (;;) {
+    const next = cur.getNextBlock();
+    if (next === null) return "[*]";
+    if (next.type !== "state_transition") {
+      return isNameable(next) ? (next.getFieldValue("NAME") as string) : "[*]";
+    }
+    cur = next;
+  }
+}
+
+/**
+ * FR-STATE-11 (02_design.md 24.8, revised in 43): when a genuinely new
+ * Transition makes its first *actual* connection (previous or next,
+ * including into a Composite State's DO/REGION input), default FROM to the
+ * name of the nearest preceding State/Composite State/Choice/Fork/Join and TO
+ * to the nearest following one -- but when that nearest block is a Composite
+ * State that this Transition is itself nested inside (first/last in its
+ * DO/REGION_i body), use `[*]` instead of the Composite State's own name,
+ * since that represents the Composite State's own internal start/end.
  *
  * A Transition that is still standalone (no previous and no next block at
  * all) is left untouched and stays eligible for a later connection --
@@ -43,20 +68,7 @@ export function applyStateAutoDefault(_workspace: Blockly.Workspace, block: Bloc
   if (block.type !== "state_transition") return;
   if (block.getPreviousBlock() === null && block.getNextBlock() === null) return; // standalone; stay pending
 
-  const ordered = flattenChain(block.getRootBlock(), stateNestedHeads);
-  const index = ordered.indexOf(block);
-
-  for (let i = index - 1; i >= 0; i--) {
-    if (isNameable(ordered[i])) {
-      setFieldValueRefreshingDropdown(block, "FROM", ordered[i].getFieldValue("NAME") as string);
-      break;
-    }
-  }
-  for (let i = index + 1; i < ordered.length; i++) {
-    if (isNameable(ordered[i])) {
-      setFieldValueRefreshingDropdown(block, "TO", ordered[i].getFieldValue("NAME") as string);
-      break;
-    }
-  }
+  setFieldValueRefreshingDropdown(block, "FROM", scanBackward(block));
+  setFieldValueRefreshingDropdown(block, "TO", scanForward(block));
   consumeEligibility(block.id);
 }
