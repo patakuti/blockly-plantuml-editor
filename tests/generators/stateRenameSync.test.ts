@@ -59,6 +59,24 @@ describe("syncStateRename (FR-STATE-07)", () => {
     expect(transition.getField("TO")!.getText()).toBe("CompositeA");
   });
 
+  it("updates Transition FROM/TO history-suffixed references when the referenced composite state is renamed (FR-STATE-16)", async () => {
+    const composite = workspace.newBlock("state_composite");
+    composite.setFieldValue("Composite1", "NAME");
+
+    const shallow = workspace.newBlock("state_transition");
+    shallow.setFieldValue("Composite1", "FROM");
+    shallow.setFieldValue("Composite1[H]", "TO");
+    const deep = workspace.newBlock("state_transition");
+    deep.setFieldValue("Composite1[H*]", "FROM");
+    deep.setFieldValue("Composite1", "TO");
+
+    composite.setFieldValue("CompositeA", "NAME");
+    await flushEvents();
+
+    expect(shallow.getFieldValue("TO")).toBe("CompositeA[H]");
+    expect(deep.getFieldValue("FROM")).toBe("CompositeA[H*]");
+  });
+
   it("updates Transition FROM/TO when the referenced choice is renamed", async () => {
     const choice = workspace.newBlock("state_choice");
     choice.setFieldValue("Choice1", "NAME");

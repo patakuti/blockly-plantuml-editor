@@ -12,6 +12,23 @@ const NAME_OWNER_TYPES = ["state_state", "state_choice", "state_composite", "sta
 /** The pseudostate token is always a valid reference; it doesn't need a matching declaration. */
 const PSEUDOSTATE = "[*]";
 
+/**
+ * Shallow/deep history pseudostate tokens (FR-STATE-16, 02_design.md 38.3).
+ * Bare, they're always valid (same as PSEUDOSTATE). Suffixed onto a name
+ * (e.g. "Foo[H]"), they're only valid if "Foo" is a currently declared
+ * Composite State -- History has no meaning for a plain State/Choice/Fork/Join.
+ */
+const SHALLOW_HISTORY = "[H]";
+const DEEP_HISTORY = "[H*]";
+const HISTORY_REFERENCE = /^(.+)\[H\*?\]$/;
+
+function isValidReference(value: string, stateNames: ReadonlySet<string>, compositeNames: ReadonlySet<string>): boolean {
+  if (value === PSEUDOSTATE || value === SHALLOW_HISTORY || value === DEEP_HISTORY) return true;
+  const historyMatch = HISTORY_REFERENCE.exec(value);
+  if (historyMatch) return compositeNames.has(historyMatch[1]);
+  return stateNames.has(value);
+}
+
 export interface StateWarning {
   blockId: string;
   message: string;
@@ -29,6 +46,9 @@ export interface StateWarning {
  */
 export function validateStateWorkspace(workspace: Blockly.Workspace): StateWarning[] {
   const warnings: StateWarning[] = [];
+  const compositeNames = new Set(
+    workspace.getBlocksByType("state_composite", false).map((b) => b.getFieldValue("NAME") as string),
+  );
   const stateNames = new Set(
     [
       ...workspace.getBlocksByType("state_state", false),
@@ -42,7 +62,7 @@ export function validateStateWorkspace(workspace: Blockly.Workspace): StateWarni
   for (const [blockType, fields] of Object.entries(REFERENCE_FIELDS)) {
     for (const block of workspace.getBlocksByType(blockType, false)) {
       const missing = fields.filter(
-        (field) => block.getFieldValue(field) !== PSEUDOSTATE && !stateNames.has(block.getFieldValue(field)),
+        (field) => !isValidReference(block.getFieldValue(field), stateNames, compositeNames),
       );
       const message =
         missing.length > 0

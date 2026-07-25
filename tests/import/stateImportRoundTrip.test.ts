@@ -35,6 +35,16 @@ describe("state PlantUML import round-trip", () => {
     expect(roundTrip(text)).toBe(text);
   });
 
+  it("round-trips transitions referencing bare shallow/deep history pseudostates", () => {
+    const text = "@startuml\n[H] --> State1\nState1 --> [H*]\n@enduml\n";
+    expect(roundTrip(text)).toBe(text);
+  });
+
+  it("round-trips transitions referencing a Composite State's history via the compound token", () => {
+    const text = "@startuml\nstate Grouped {\n}\nGrouped --> Grouped[H]\nGrouped[H*] --> Grouped\n@enduml\n";
+    expect(roundTrip(text)).toBe(text);
+  });
+
   it("round-trips a nested composite state", () => {
     const text = "@startuml\nstate Outer {\nstate Inner {\nstate Sub1\n}\n}\n@enduml\n";
     expect(roundTrip(text)).toBe(text);

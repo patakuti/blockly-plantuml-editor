@@ -138,6 +138,34 @@ describe("stateWorkspaceToCode", () => {
     );
   });
 
+  it("generates transitions referencing bare shallow/deep history pseudostates", () => {
+    const t1 = workspace.newBlock("state_transition");
+    t1.setFieldValue("[H]", "FROM");
+    t1.setFieldValue("State1", "TO");
+    const t2 = workspace.newBlock("state_transition");
+    t2.setFieldValue("State1", "FROM");
+    t2.setFieldValue("[H*]", "TO");
+
+    expect(stateWorkspaceToCode(workspace)).toBe(
+      "@startuml\n[H] --> State1\nState1 --> [H*]\n@enduml\n",
+    );
+  });
+
+  it("generates transitions referencing a Composite State's history via the compound token", () => {
+    const composite = workspace.newBlock("state_composite");
+    composite.setFieldValue("Grouped", "NAME");
+    const t1 = workspace.newBlock("state_transition");
+    t1.setFieldValue("Grouped", "FROM");
+    t1.setFieldValue("Grouped[H]", "TO");
+    const t2 = workspace.newBlock("state_transition");
+    t2.setFieldValue("Grouped[H*]", "FROM");
+    t2.setFieldValue("Grouped", "TO");
+
+    expect(stateWorkspaceToCode(workspace)).toBe(
+      "@startuml\nstate Grouped {\n}\nGrouped --> Grouped[H]\nGrouped[H*] --> Grouped\n@enduml\n",
+    );
+  });
+
   it("generates a Composite State with no extra regions exactly as before (no \"--\")", () => {
     const composite = workspace.newBlock("state_composite");
     composite.setFieldValue("Grouped", "NAME");
@@ -261,6 +289,56 @@ describe("validateStateWorkspace", () => {
     transition.setFieldValue("Join1", "TO");
 
     expect(validateStateWorkspace(workspace)).toEqual([]);
+  });
+
+  describe("history pseudostate references (FR-STATE-16)", () => {
+    it("treats bare [H] and [H*] as always-valid references", () => {
+      const state = workspace.newBlock("state_state");
+      state.setFieldValue("State1", "NAME");
+      const t1 = workspace.newBlock("state_transition");
+      t1.setFieldValue("[H]", "FROM");
+      t1.setFieldValue("State1", "TO");
+      const t2 = workspace.newBlock("state_transition");
+      t2.setFieldValue("State1", "FROM");
+      t2.setFieldValue("[H*]", "TO");
+
+      expect(validateStateWorkspace(workspace)).toEqual([]);
+    });
+
+    it("treats <name>[H]/<name>[H*] as valid when the name is a declared Composite State", () => {
+      const composite = workspace.newBlock("state_composite");
+      composite.setFieldValue("Grouped", "NAME");
+      const t1 = workspace.newBlock("state_transition");
+      t1.setFieldValue("Grouped", "FROM");
+      t1.setFieldValue("Grouped[H]", "TO");
+      const t2 = workspace.newBlock("state_transition");
+      t2.setFieldValue("Grouped[H*]", "FROM");
+      t2.setFieldValue("Grouped", "TO");
+
+      expect(validateStateWorkspace(workspace)).toEqual([]);
+    });
+
+    it("warns when <name>[H] references a Composite State that doesn't exist", () => {
+      const transition = workspace.newBlock("state_transition");
+      transition.setFieldValue("[*]", "FROM");
+      transition.setFieldValue("Ghost[H]", "TO");
+
+      const warnings = validateStateWorkspace(workspace);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0].message).toContain('TO="Ghost[H]"');
+    });
+
+    it("warns when <name>[H] references a plain State rather than a Composite State", () => {
+      const state = workspace.newBlock("state_state");
+      state.setFieldValue("Plain", "NAME");
+      const transition = workspace.newBlock("state_transition");
+      transition.setFieldValue("[*]", "FROM");
+      transition.setFieldValue("Plain[H]", "TO");
+
+      const warnings = validateStateWorkspace(workspace);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0].message).toContain('TO="Plain[H]"');
+    });
   });
 
   describe("NAME containing a space or a double quote (FR-STATE-13)", () => {
