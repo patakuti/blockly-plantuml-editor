@@ -125,4 +125,15 @@ describe("state PlantUML import round-trip", () => {
       "@enduml\n";
     expect(roundTrip(text)).toBe(text);
   });
+
+  it("round-trips a composite state with a \"||\" region separator", () => {
+    const text = "@startuml\nstate Active {\nstate A1\n||\nstate A2\n}\n@enduml\n";
+    expect(roundTrip(text)).toBe(text);
+  });
+
+  it("normalizes a mixed \"--\"/\"||\" source to the first separator on re-export (only the first affects PlantUML's rendering, 02_design.md 39.1a)", () => {
+    const text = "@startuml\nstate Active {\nstate A1\n--\nstate A2\n||\nstate A3\n}\n@enduml\n";
+    const normalized = "@startuml\nstate Active {\nstate A1\n--\nstate A2\n--\nstate A3\n}\n@enduml\n";
+    expect(roundTrip(text)).toBe(normalized);
+  });
 });

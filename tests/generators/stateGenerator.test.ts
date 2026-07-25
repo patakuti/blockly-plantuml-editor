@@ -213,6 +213,46 @@ describe("stateWorkspaceToCode", () => {
     );
   });
 
+  it("generates a \"||\" region separator when selected (FR-STATE-17)", () => {
+    const composite = workspace.newBlock("state_composite");
+    composite.setFieldValue("Active", "NAME");
+    composite.loadExtraState!({ extraRegionCount: 1 });
+    composite.setFieldValue("||", "SEPARATOR");
+
+    expect(stateWorkspaceToCode(workspace)).toBe("@startuml\nstate Active {\n||\n}\n@enduml\n");
+  });
+
+  it("applies the single chosen separator to every boundary, not just the first (PlantUML only honors the first anyway, 02_design.md 39.1a)", () => {
+    const composite = workspace.newBlock("state_composite");
+    composite.setFieldValue("Active", "NAME");
+    composite.loadExtraState!({ extraRegionCount: 2 });
+    composite.setFieldValue("||", "SEPARATOR");
+
+    expect(stateWorkspaceToCode(workspace)).toBe("@startuml\nstate Active {\n||\n||\n}\n@enduml\n");
+  });
+
+  it("keeps every boundary's displayed label in sync with the chosen separator", () => {
+    const composite = workspace.newBlock("state_composite");
+    composite.setFieldValue("Active", "NAME");
+    composite.loadExtraState!({ extraRegionCount: 2 });
+
+    composite.setFieldValue("||", "SEPARATOR");
+
+    expect(composite.getField("SEPARATOR_LABEL2")!.getText()).toBe("||");
+  });
+
+  it("preserves the chosen separator when the mutator's region count is increased", () => {
+    const composite = workspace.newBlock("state_composite");
+    composite.setFieldValue("Active", "NAME");
+    composite.loadExtraState!({ extraRegionCount: 1 });
+    composite.setFieldValue("||", "SEPARATOR");
+
+    composite.loadExtraState!({ extraRegionCount: 2 });
+
+    expect(composite.getFieldValue("SEPARATOR")).toBe("||");
+    expect(composite.getField("SEPARATOR_LABEL2")!.getText()).toBe("||");
+  });
+
   it("allows a nested Composite State inside a concurrent region", () => {
     const composite = workspace.newBlock("state_composite");
     composite.setFieldValue("Active", "NAME");

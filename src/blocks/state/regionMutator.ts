@@ -4,16 +4,63 @@ import { STATE_STATEMENT } from "./constants";
 /**
  * state_composite always has one mandatory region (the DO input, defined
  * statically in the block's JSON). The mutator adds/removes further
- * concurrent regions (REGION1, REGION2, ...), each preceded by a "--"
- * separator, following the same pattern as activity/forkMutator.ts (which
- * has two mandatory branches instead of one).
+ * concurrent regions (REGION1, REGION2, ...), each preceded by a "--"/"||"
+ * separator (FR-STATE-17), following the same pattern as
+ * activity/forkMutator.ts (which has two mandatory branches instead of one).
  */
 interface StateCompositeBlock extends Blockly.Block {
   extraRegionCount_: number;
 }
 
+/**
+ * Region-separator symbols (FR-STATE-17): "--" (horizontal) or "||"
+ * (vertical). Confirmed against the official PlantUML server that only the
+ * *first* separator in a Composite State's body decides the whole state's
+ * layout axis -- rendering two test diagrams and comparing the resulting
+ * SVG coordinates showed every region stacked according to the first
+ * separator alone, regardless of what any later separator said (02_design.md
+ * 39.1a). So a single shared choice is exposed as an interactive dropdown on
+ * the first boundary (REGION_SEP_1's "SEPARATOR" field); every later
+ * boundary mirrors it as a plain, non-interactive label kept in sync by
+ * `separatorValidator` so the block never displays a choice that would be
+ * silently ignored by PlantUML.
+ */
+const SEPARATOR_OPTIONS: [string, string][] = [
+  ["--", "--"],
+  ["||", "||"],
+];
+const DEFAULT_SEPARATOR = "--";
+
+/** Current effective separator (the first boundary's field value, or the default if there is no boundary yet). */
+function currentSeparator(block: StateCompositeBlock): string {
+  const field = block.getField("SEPARATOR");
+  return field ? (field.getValue() as string) : DEFAULT_SEPARATOR;
+}
+
+/** Mirrors a change to the first boundary's dropdown onto every later boundary's read-only label. */
+function separatorValidator(this: Blockly.FieldDropdown, newValue: string): string {
+  const block = this.getSourceBlock() as StateCompositeBlock | null;
+  if (block) {
+    let i = 2;
+    while (block.getInput(`REGION_SEP_${i}`)) {
+      (block.getField(`SEPARATOR_LABEL${i}`) as Blockly.FieldLabel | null)?.setValue(newValue);
+      i++;
+    }
+  }
+  return newValue;
+}
+
+/**
+ * Remove all region inputs (index >= 1), then re-add the current count. The
+ * shared separator choice is preserved across a mutator-triggered rebuild
+ * (compose()/loadExtraState()) by reading it out before removal and
+ * restoring it on the recreated fields -- rebuildShape fully tears down and
+ * recreates every separator input regardless of whether the count actually
+ * changed, so without this a region count change would silently reset the
+ * choice back to "--".
+ */
 function rebuildShape(block: StateCompositeBlock): void {
-  // Remove all region inputs (index >= 1), then re-add the current count.
+  const separator = currentSeparator(block);
   let i = 1;
   while (block.getInput(`REGION_SEP_${i}`)) {
     block.removeInput(`REGION_SEP_${i}`);
@@ -22,7 +69,13 @@ function rebuildShape(block: StateCompositeBlock): void {
   }
   for (let j = 0; j < block.extraRegionCount_; j++) {
     const index = 1 + j;
-    block.appendDummyInput(`REGION_SEP_${index}`).appendField("--");
+    const sepInput = block.appendDummyInput(`REGION_SEP_${index}`);
+    if (index === 1) {
+      sepInput.appendField(new Blockly.FieldDropdown(SEPARATOR_OPTIONS, separatorValidator), "SEPARATOR");
+      block.setFieldValue(separator, "SEPARATOR");
+    } else {
+      sepInput.appendField(new Blockly.FieldLabel(separator), `SEPARATOR_LABEL${index}`);
+    }
     block.appendStatementInput(`REGION${index}`).setCheck(STATE_STATEMENT);
   }
 }

@@ -148,7 +148,7 @@ export function defineStateBlocks(): void {
       this.setColour(290);
       this.setTooltip(
         "Groups a sequence of states/transitions as a nested (composite) state. Nestable. " +
-          "Use the gear icon to add concurrent regions (separated by \"--\").",
+          "Use the gear icon to add concurrent regions, separated by a per-boundary \"--\"/\"||\" dropdown.",
       );
       Blockly.Extensions.apply("state_region_mutator", this, true);
     },
