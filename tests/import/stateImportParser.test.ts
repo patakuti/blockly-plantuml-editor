@@ -20,6 +20,22 @@ describe("parseStatePlantUml", () => {
     expect(parseStatePlantUml(source)).toEqual([{ kind: "transition", from: "State1", to: "[*]" }]);
   });
 
+  it("parses transitions referencing bare shallow/deep history pseudostates", () => {
+    const source = "[H] --> State1\nState1 --> [H*]";
+    expect(parseStatePlantUml(source)).toEqual([
+      { kind: "transition", from: "[H]", to: "State1" },
+      { kind: "transition", from: "State1", to: "[H*]" },
+    ]);
+  });
+
+  it("parses transitions referencing a Composite State's history via the compound token", () => {
+    const source = "Grouped --> Grouped[H]\nGrouped[H*] --> Grouped";
+    expect(parseStatePlantUml(source)).toEqual([
+      { kind: "transition", from: "Grouped", to: "Grouped[H]" },
+      { kind: "transition", from: "Grouped[H*]", to: "Grouped" },
+    ]);
+  });
+
   it("parses a composite state, including nested composite states", () => {
     const source = "state Outer {\nstate Inner {\nstate Leaf\n}\n}";
     expect(parseStatePlantUml(source)).toEqual([

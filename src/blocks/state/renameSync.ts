@@ -4,6 +4,10 @@ import { setFieldValueRefreshingDropdown } from "../common/setDropdownFieldValue
 
 const NAME_OWNER_TYPES = new Set(["state_state", "state_composite", "state_choice", "state_fork", "state_join"]);
 
+/** Shallow/deep history suffixes (FR-STATE-16, 02_design.md 38.3): "Foo[H]"/"Foo[H*]" track a rename of "Foo" the same way a bare reference does. */
+const SHALLOW_HISTORY = "[H]";
+const DEEP_HISTORY = "[H*]";
+
 /**
  * Keeps Transition (FROM/TO) fields in sync when a state_state's,
  * state_composite's, or state_choice's NAME changes (01_requirements.md
@@ -25,8 +29,13 @@ export function syncStateRename(workspace: Blockly.Workspace, event: Blockly.Eve
   for (const [blockType, fields] of Object.entries(REFERENCE_FIELDS)) {
     for (const referencingBlock of workspace.getBlocksByType(blockType, false)) {
       for (const field of fields) {
-        if (referencingBlock.getFieldValue(field) === oldValue) {
+        const current = referencingBlock.getFieldValue(field);
+        if (current === oldValue) {
           setFieldValueRefreshingDropdown(referencingBlock, field, newValue);
+        } else if (current === `${oldValue}${SHALLOW_HISTORY}`) {
+          setFieldValueRefreshingDropdown(referencingBlock, field, `${newValue}${SHALLOW_HISTORY}`);
+        } else if (current === `${oldValue}${DEEP_HISTORY}`) {
+          setFieldValueRefreshingDropdown(referencingBlock, field, `${newValue}${DEEP_HISTORY}`);
         }
       }
     }

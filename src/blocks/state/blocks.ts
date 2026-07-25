@@ -6,6 +6,17 @@ import { defineStateRegionMutator } from "./regionMutator";
 const PSEUDOSTATE = "[*]";
 
 /**
+ * Shallow/deep history pseudostate tokens (FR-STATE-15). Bare, they mean
+ * "this composite state's own history" when used from inside its own body
+ * (the same scoping rule "[*]" already gets). Suffixed onto a declared
+ * Composite State's name (e.g. "Foo[H]"), they reference that composite's
+ * history from anywhere else -- confirmed against the official PlantUML
+ * server (02_design.md 38.1) to be the form actually used in practice.
+ */
+const SHALLOW_HISTORY = "[H]";
+const DEEP_HISTORY = "[H*]";
+
+/**
  * Matches a space or a `"` (FR-STATE-12/13). State/Composite State/Choice
  * names are emitted as bare, unquoted PlantUML identifiers (`state Name`),
  * unlike Sequence/Component's always-quoted names -- either character breaks
@@ -23,17 +34,27 @@ export const INVALID_STATE_NAME_PATTERN = /[ "]/;
  */
 function stateOptions(this: Blockly.FieldDropdown): Blockly.MenuOption[] {
   const block = this.getSourceBlock();
-  const names = block
-    ? [
-        ...block.workspace.getBlocksByType("state_state", true),
-        ...block.workspace.getBlocksByType("state_composite", true),
-        ...block.workspace.getBlocksByType("state_choice", true),
-        ...block.workspace.getBlocksByType("state_fork", true),
-        ...block.workspace.getBlocksByType("state_join", true),
-      ].map((b) => b.getFieldValue("NAME") as string)
-    : [];
-  const options: Blockly.MenuOption[] = [[PSEUDOSTATE, PSEUDOSTATE]];
-  return options.concat(names.map((name) => [name, name]));
+  if (!block) return [[PSEUDOSTATE, PSEUDOSTATE]];
+
+  const compositeBlocks = block.workspace.getBlocksByType("state_composite", true);
+  const names = [
+    ...block.workspace.getBlocksByType("state_state", true),
+    ...compositeBlocks,
+    ...block.workspace.getBlocksByType("state_choice", true),
+    ...block.workspace.getBlocksByType("state_fork", true),
+    ...block.workspace.getBlocksByType("state_join", true),
+  ].map((b) => b.getFieldValue("NAME") as string);
+  const historyOptions = compositeBlocks.flatMap((b) => {
+    const name = b.getFieldValue("NAME") as string;
+    return [`${name}${SHALLOW_HISTORY}`, `${name}${DEEP_HISTORY}`];
+  });
+
+  const options: Blockly.MenuOption[] = [
+    [PSEUDOSTATE, PSEUDOSTATE],
+    [SHALLOW_HISTORY, SHALLOW_HISTORY],
+    [DEEP_HISTORY, DEEP_HISTORY],
+  ];
+  return options.concat([...names, ...historyOptions].map((name) => [name, name]));
 }
 
 /**
