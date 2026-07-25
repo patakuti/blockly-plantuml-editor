@@ -47,7 +47,26 @@ function namesInUse(
  */
 const pendingCorrections = new WeakMap<Blockly.Block, string>();
 
-function setNameSilently(block: Blockly.Block, value: string): void {
+/**
+ * Sets a block's NAME field to `value` without it being mistaken for a user
+ * rename by guardDuplicateRename/rename-sync (see `pendingCorrections`
+ * above). Exported for import builders (e.g. stateImportBuilder.ts): a
+ * freshly created block's NAME field starts out holding its block
+ * definition's hardcoded default text (e.g. "State1"), and the builder's
+ * very next step overwrites it with the name actually parsed from the
+ * source. That overwrite is itself a `setFieldValue` call indistinguishable
+ * from a real rename -- if the default text happens to already be a real,
+ * correctly-referenced name elsewhere in the same diagram (an easy
+ * coincidence, since "State1" etc. are both the hardcoded default *and* a
+ * very common real name), an unguarded `setFieldValue` would make
+ * rename-sync "helpfully" retarget that unrelated, correct reference onto
+ * this brand-new block, corrupting it. Confirmed live: importing a diagram
+ * containing a real `state State1` plus a later, differently-named
+ * `state_state`/`state_choice`/`state_fork`/`state_join` node reproduced
+ * exactly this corruption before this call was routed through
+ * `setNameSilently` (02_design.md 37.7a).
+ */
+export function setNameSilently(block: Blockly.Block, value: string): void {
   pendingCorrections.set(block, value);
   block.setFieldValue(value, "NAME");
 }

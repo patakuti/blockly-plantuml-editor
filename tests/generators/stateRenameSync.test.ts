@@ -74,6 +74,26 @@ describe("syncStateRename (FR-STATE-07)", () => {
     expect(transition.getField("TO")!.getText()).toBe("ChoiceA");
   });
 
+  it("updates Transition FROM/TO when the referenced fork or join is renamed", async () => {
+    const fork = workspace.newBlock("state_fork");
+    fork.setFieldValue("Fork1", "NAME");
+    const join = workspace.newBlock("state_join");
+    join.setFieldValue("Join1", "NAME");
+
+    const transition = workspace.newBlock("state_transition");
+    transition.setFieldValue("Fork1", "FROM");
+    transition.setFieldValue("Join1", "TO");
+
+    fork.setFieldValue("ForkA", "NAME");
+    join.setFieldValue("JoinA", "NAME");
+    await flushEvents();
+
+    expect(transition.getFieldValue("FROM")).toBe("ForkA");
+    expect(transition.getFieldValue("TO")).toBe("JoinA");
+    expect(transition.getField("FROM")!.getText()).toBe("ForkA");
+    expect(transition.getField("TO")!.getText()).toBe("JoinA");
+  });
+
   it("does not touch references to a different state or the pseudostate", async () => {
     const stateA = workspace.newBlock("state_state");
     stateA.setFieldValue("StateA", "NAME");

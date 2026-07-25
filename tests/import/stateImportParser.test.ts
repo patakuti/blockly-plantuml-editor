@@ -44,6 +44,16 @@ describe("parseStatePlantUml", () => {
     expect(parseStatePlantUml(source)).toEqual([{ kind: "choice", name: "Choice1" }]);
   });
 
+  it("parses a fork pseudostate declaration", () => {
+    const source = "state Fork1 <<fork>>";
+    expect(parseStatePlantUml(source)).toEqual([{ kind: "fork", name: "Fork1" }]);
+  });
+
+  it("parses a join pseudostate declaration", () => {
+    const source = "state Join1 <<join>>";
+    expect(parseStatePlantUml(source)).toEqual([{ kind: "join", name: "Join1" }]);
+  });
+
   it("parses a composite state with two concurrent regions separated by \"--\"", () => {
     const source = "state Active {\nstate A1\n--\nstate A2\n}";
     expect(parseStatePlantUml(source)).toEqual([
@@ -135,6 +145,13 @@ describe("parseStatePlantUml", () => {
     const source = "state Choice1 <<choice>>\nnote right of Choice1\nbranch here\nend note";
     expect(parseStatePlantUml(source)).toEqual([
       { kind: "choice", name: "Choice1", comment: { text: "branch here", direction: "right" } },
+    ]);
+  });
+
+  it("attaches a note to a fork pseudostate", () => {
+    const source = "state Fork1 <<fork>>\nnote right of Fork1\nsplits here\nend note";
+    expect(parseStatePlantUml(source)).toEqual([
+      { kind: "fork", name: "Fork1", comment: { text: "splits here", direction: "right" } },
     ]);
   });
 

@@ -7,7 +7,7 @@ export const REFERENCE_FIELDS: Record<string, string[]> = {
 };
 
 /** Block types whose NAME is emitted as a bare PlantUML identifier (FR-STATE-13). */
-const NAME_OWNER_TYPES = ["state_state", "state_choice", "state_composite"];
+const NAME_OWNER_TYPES = ["state_state", "state_choice", "state_composite", "state_fork", "state_join"];
 
 /** The pseudostate token is always a valid reference; it doesn't need a matching declaration. */
 const PSEUDOSTATE = "[*]";
@@ -34,6 +34,8 @@ export function validateStateWorkspace(workspace: Blockly.Workspace): StateWarni
       ...workspace.getBlocksByType("state_state", false),
       ...workspace.getBlocksByType("state_composite", false),
       ...workspace.getBlocksByType("state_choice", false),
+      ...workspace.getBlocksByType("state_fork", false),
+      ...workspace.getBlocksByType("state_join", false),
     ].map((b) => b.getFieldValue("NAME") as string),
   );
 

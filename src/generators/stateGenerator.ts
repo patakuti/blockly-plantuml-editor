@@ -13,7 +13,13 @@ export const stateGenerator = new Blockly.CodeGenerator("PlantUMLState");
  * verified to sometimes break PlantUML rendering right after a transition).
  */
 function stateNoteAnchor(block: Blockly.Block): string | undefined {
-  if (block.type === "state_state" || block.type === "state_composite" || block.type === "state_choice") {
+  if (
+    block.type === "state_state" ||
+    block.type === "state_composite" ||
+    block.type === "state_choice" ||
+    block.type === "state_fork" ||
+    block.type === "state_join"
+  ) {
     return escapeText(block.getFieldValue("NAME"));
   }
   return undefined;
@@ -23,6 +29,12 @@ stateGenerator.forBlock["state_state"] = (block) => `state ${escapeText(block.ge
 
 stateGenerator.forBlock["state_choice"] = (block) =>
   `state ${escapeText(block.getFieldValue("NAME"))} <<choice>>\n`;
+
+stateGenerator.forBlock["state_fork"] = (block) =>
+  `state ${escapeText(block.getFieldValue("NAME"))} <<fork>>\n`;
+
+stateGenerator.forBlock["state_join"] = (block) =>
+  `state ${escapeText(block.getFieldValue("NAME"))} <<join>>\n`;
 
 stateGenerator.forBlock["state_transition"] = (block) => {
   const from = escapeText(block.getFieldValue("FROM"));

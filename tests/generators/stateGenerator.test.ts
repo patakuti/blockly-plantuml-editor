@@ -114,6 +114,30 @@ describe("stateWorkspaceToCode", () => {
     );
   });
 
+  it("generates a fork pseudostate declaration", () => {
+    const fork = workspace.newBlock("state_fork");
+    fork.setFieldValue("Fork1", "NAME");
+
+    expect(stateWorkspaceToCode(workspace)).toBe("@startuml\nstate Fork1 <<fork>>\n@enduml\n");
+  });
+
+  it("generates a join pseudostate declaration", () => {
+    const join = workspace.newBlock("state_join");
+    join.setFieldValue("Join1", "NAME");
+
+    expect(stateWorkspaceToCode(workspace)).toBe("@startuml\nstate Join1 <<join>>\n@enduml\n");
+  });
+
+  it("wraps a Fork's comment as an explicit note anchored to its own name", () => {
+    const fork = workspace.newBlock("state_fork");
+    fork.setFieldValue("Fork1", "NAME");
+    fork.setCommentText("splits here");
+
+    expect(stateWorkspaceToCode(workspace)).toBe(
+      "@startuml\nstate Fork1 <<fork>>\nnote right of Fork1\nsplits here\nend note\n@enduml\n",
+    );
+  });
+
   it("generates a Composite State with no extra regions exactly as before (no \"--\")", () => {
     const composite = workspace.newBlock("state_composite");
     composite.setFieldValue("Grouped", "NAME");
@@ -227,11 +251,25 @@ describe("validateStateWorkspace", () => {
     expect(validateStateWorkspace(workspace)).toEqual([]);
   });
 
+  it("treats a Fork's and a Join's own name as a valid reference target", () => {
+    const fork = workspace.newBlock("state_fork");
+    fork.setFieldValue("Fork1", "NAME");
+    const join = workspace.newBlock("state_join");
+    join.setFieldValue("Join1", "NAME");
+    const transition = workspace.newBlock("state_transition");
+    transition.setFieldValue("Fork1", "FROM");
+    transition.setFieldValue("Join1", "TO");
+
+    expect(validateStateWorkspace(workspace)).toEqual([]);
+  });
+
   describe("NAME containing a space or a double quote (FR-STATE-13)", () => {
     it.each([
       ["state_state", "My State"],
       ["state_choice", "My Choice"],
       ["state_composite", "My Composite"],
+      ["state_fork", "My Fork"],
+      ["state_join", "My Join"],
     ])("warns on a %s name containing a space", (blockType, name) => {
       const block = workspace.newBlock(blockType);
       block.setFieldValue(name, "NAME");

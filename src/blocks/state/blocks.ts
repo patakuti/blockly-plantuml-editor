@@ -28,6 +28,8 @@ function stateOptions(this: Blockly.FieldDropdown): Blockly.MenuOption[] {
         ...block.workspace.getBlocksByType("state_state", true),
         ...block.workspace.getBlocksByType("state_composite", true),
         ...block.workspace.getBlocksByType("state_choice", true),
+        ...block.workspace.getBlocksByType("state_fork", true),
+        ...block.workspace.getBlocksByType("state_join", true),
       ].map((b) => b.getFieldValue("NAME") as string)
     : [];
   const options: Blockly.MenuOption[] = [[PSEUDOSTATE, PSEUDOSTATE]];
@@ -93,6 +95,26 @@ export function defineStateBlocks(): void {
       this.setNextStatement(true, STATE_STATEMENT);
       this.setColour(160);
       this.setTooltip("Declares a choice pseudostate (a branch point). Connect transitions in and out just like a regular state.");
+    },
+  };
+
+  Blockly.Blocks["state_fork"] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput().appendField("fork").appendField(new StateNameField("Fork1"), "NAME");
+      this.setPreviousStatement(true, STATE_STATEMENT);
+      this.setNextStatement(true, STATE_STATEMENT);
+      this.setColour(160);
+      this.setTooltip("Declares a fork pseudostate (splits into concurrent transitions). Connect transitions in and out just like a regular state.");
+    },
+  };
+
+  Blockly.Blocks["state_join"] = {
+    init(this: Blockly.Block) {
+      this.appendDummyInput().appendField("join").appendField(new StateNameField("Join1"), "NAME");
+      this.setPreviousStatement(true, STATE_STATEMENT);
+      this.setNextStatement(true, STATE_STATEMENT);
+      this.setColour(160);
+      this.setTooltip("Declares a join pseudostate (merges concurrent transitions). Connect transitions in and out just like a regular state.");
     },
   };
 

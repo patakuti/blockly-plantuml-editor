@@ -77,6 +77,26 @@ describe("state PlantUML import round-trip", () => {
     expect(roundTrip(text)).toBe(text);
   });
 
+  it("round-trips fork/join pseudostates", () => {
+    const text =
+      "@startuml\n" +
+      "state Fork1 <<fork>>\n" +
+      "[*] --> Fork1\n" +
+      "Fork1 --> StateA\n" +
+      "Fork1 --> StateB\n" +
+      "StateA --> Join1\n" +
+      "StateB --> Join1\n" +
+      "state Join1 <<join>>\n" +
+      "Join1 --> [*]\n" +
+      "@enduml\n";
+    expect(roundTrip(text)).toBe(text);
+  });
+
+  it("round-trips a fork's note", () => {
+    const text = "@startuml\nstate Fork1 <<fork>>\nnote right of Fork1\nsplits here\nend note\n@enduml\n";
+    expect(roundTrip(text)).toBe(text);
+  });
+
   it("round-trips a composite state with two concurrent regions", () => {
     const text = "@startuml\nstate Active {\nstate A1\n--\nstate A2\n}\n@enduml\n";
     expect(roundTrip(text)).toBe(text);

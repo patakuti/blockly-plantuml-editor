@@ -24,6 +24,8 @@ export type { ImportedComment };
 export type StateImportedNode =
   | { kind: "state"; name: string; comment?: ImportedComment }
   | { kind: "choice"; name: string; comment?: ImportedComment }
+  | { kind: "fork"; name: string; comment?: ImportedComment }
+  | { kind: "join"; name: string; comment?: ImportedComment }
   | { kind: "transition"; from: string; to: string; label?: string; comment?: ImportedComment }
   | { kind: "composite"; name: string; regions: StateImportedNode[][]; comment?: ImportedComment }
   | { kind: "raw"; text: string; comment?: ImportedComment };
@@ -31,6 +33,8 @@ export type StateImportedNode =
 export { PlantUmlImportError };
 
 const CHOICE = /^state\s+(\S+)\s+<<choice>>$/i;
+const FORK = /^state\s+(\S+)\s+<<fork>>$/i;
+const JOIN = /^state\s+(\S+)\s+<<join>>$/i;
 const STATE = /^state\s+(\S+)$/i;
 const COMPOSITE_OPEN = /^state\s+(\S+)\s*\{$/i;
 const COMPOSITE_END = /^\}$/;
@@ -105,7 +109,7 @@ function attachOrRawifyNote(
 
   const last = nodes[nodes.length - 1];
   const canAttach = last !== undefined &&
-    (last.kind === "state" || last.kind === "composite" || last.kind === "choice") &&
+    (last.kind === "state" || last.kind === "composite" || last.kind === "choice" || last.kind === "fork" || last.kind === "join") &&
     last.name === target && !last.comment;
   if (canAttach) {
     last.comment = { text: contentLines.join("\n"), direction };
@@ -156,6 +160,18 @@ function parseOneStatement(cursor: LineCursor): StateImportedNode {
   if (choiceMatch) {
     cursor.consumeTrimmed();
     return { kind: "choice", name: unescapeText(choiceMatch[1]) };
+  }
+
+  const forkMatch = FORK.exec(trimmed);
+  if (forkMatch) {
+    cursor.consumeTrimmed();
+    return { kind: "fork", name: unescapeText(forkMatch[1]) };
+  }
+
+  const joinMatch = JOIN.exec(trimmed);
+  if (joinMatch) {
+    cursor.consumeTrimmed();
+    return { kind: "join", name: unescapeText(joinMatch[1]) };
   }
 
   const stateMatch = STATE.exec(trimmed);

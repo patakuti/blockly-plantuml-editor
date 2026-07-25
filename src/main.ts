@@ -133,7 +133,7 @@ const diagramConfigs: DiagramConfig[] = [
     plantUmlFilename: "state-diagram.puml",
     onValidate: validateStateWorkspace,
     onFieldChange: syncStateRename,
-    nameOwnerTypes: new Set(["state_state", "state_composite", "state_choice"]),
+    nameOwnerTypes: new Set(["state_state", "state_composite", "state_choice", "state_fork", "state_join"]),
     autoDefaultOnConnect: applyStateAutoDefault,
     openImportDialog: (workspace) =>
       openImportDialog(workspace, {
