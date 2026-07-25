@@ -99,7 +99,7 @@ describe("applyStateAutoDefault (FR-STATE-11)", () => {
     expect(transition.getFieldValue("TO")).toBe("[*]");
   });
 
-  it("defaults FROM to the enclosing Composite State's own name when it's the first statement in DO", async () => {
+  it("defaults FROM to [*] when Transition is the first statement in a Composite State's DO (02_design.md 43)", async () => {
     const composite = workspace.newBlock("state_composite");
     composite.setFieldValue("Working", "NAME");
     const before = state(workspace, "Idle");
@@ -112,12 +112,82 @@ describe("applyStateAutoDefault (FR-STATE-11)", () => {
     composite.getInput("DO")!.connection!.connect(inner.previousConnection!);
     await flushEvents();
 
-    // In PlantUML output order the Composite State itself is emitted right before its own
-    // DO body, so it (not the sibling "Idle" before the whole Composite State) is the
-    // nearest nameable predecessor. Forward search still finds "Done" past the Composite
-    // State's end, since nothing follows inside DO.
-    expect(inner.getFieldValue("FROM")).toBe("Working");
-    expect(inner.getFieldValue("TO")).toBe("Done");
+    // This Transition is both the first and only statement in "Working"'s own DO body, so
+    // both FROM and TO represent Working's own internal start/end ([*]) -- not the outer
+    // siblings "Idle"/"Done", nor Working's own name. getNextBlock() never leaks out to the
+    // outer chain (02_design.md 43.2), so forward search stays bounded to DO and does not
+    // reach "Done".
+    expect(inner.getFieldValue("FROM")).toBe("[*]");
+    expect(inner.getFieldValue("TO")).toBe("[*]");
+  });
+
+  it("defaults FROM to [*] when Transition is the last statement in a Composite State's DO (TO side, 02_design.md 43)", async () => {
+    const composite = workspace.newBlock("state_composite");
+    composite.setFieldValue("Working", "NAME");
+    const before = state(workspace, "Idle");
+    const after = state(workspace, "Done");
+    before.nextConnection!.connect(composite.previousConnection!);
+    composite.nextConnection!.connect(after.previousConnection!);
+    await flushEvents();
+
+    const innerBefore = state(workspace, "Sub1");
+    composite.getInput("DO")!.connection!.connect(innerBefore.previousConnection!);
+    await flushEvents();
+
+    const inner = workspace.newBlock("state_transition");
+    innerBefore.nextConnection!.connect(inner.previousConnection!);
+    await flushEvents();
+
+    // Nothing follows this Transition inside "Working"'s DO body, so TO is [*] (Working's
+    // own internal end), not the outer sibling "Done".
+    expect(inner.getFieldValue("FROM")).toBe("Sub1");
+    expect(inner.getFieldValue("TO")).toBe("[*]");
+  });
+
+  it("defaults FROM to the Composite State's own name for a Transition placed right after it closes (02_design.md 43)", async () => {
+    const composite = workspace.newBlock("state_composite");
+    composite.setFieldValue("Working", "NAME");
+    const innerState = state(workspace, "Sub1");
+    composite.getInput("DO")!.connection!.connect(innerState.previousConnection!);
+    await flushEvents();
+
+    const transition = workspace.newBlock("state_transition");
+    composite.nextConnection!.connect(transition.previousConnection!);
+    await flushEvents();
+
+    // The Transition is a sibling right after the (non-empty) Composite State, not nested
+    // inside its DO, so FROM is Working's own name (the composite as a whole), unlike the
+    // "first statement in DO" case above.
+    expect(transition.getFieldValue("FROM")).toBe("Working");
+  });
+
+  it("defaults FROM to the Composite State's own name even when its DO body is empty (02_design.md 43)", async () => {
+    const composite = workspace.newBlock("state_composite");
+    composite.setFieldValue("Working", "NAME");
+    await flushEvents();
+
+    const transition = workspace.newBlock("state_transition");
+    composite.nextConnection!.connect(transition.previousConnection!);
+    await flushEvents();
+
+    expect(transition.getFieldValue("FROM")).toBe("Working");
+  });
+
+  it("defaults TO to the Composite State's own name for a Transition placed right before it", async () => {
+    const composite = workspace.newBlock("state_composite");
+    composite.setFieldValue("Working", "NAME");
+    await flushEvents();
+
+    const transition = workspace.newBlock("state_transition");
+    await flushEvents();
+    // connect() moves *composite* (the block snapping into place after transition), not
+    // transition itself, so transition needs its own explicit move event fired too (same
+    // caveat as the "connecting a Transition to the head of one flow" case below).
+    transition.nextConnection!.connect(composite.previousConnection!);
+    firePositionOnlyMove(transition);
+    await flushEvents();
+
+    expect(transition.getFieldValue("TO")).toBe("Working");
   });
 
   it("finds a preceding State within the same Composite State's DO body, not the outer chain", async () => {
@@ -138,7 +208,7 @@ describe("applyStateAutoDefault (FR-STATE-11)", () => {
     expect(inner.getFieldValue("FROM")).toBe("Sub1");
   });
 
-  it("finds States across a parallel region boundary (Composite State with 2 regions)", async () => {
+  it("does not cross a parallel region boundary (Composite State with 2 regions, 02_design.md 43.4)", async () => {
     const composite = workspace.newBlock("state_composite");
     composite.setFieldValue("Working", "NAME");
     (composite as unknown as { loadExtraState(state: { extraRegionCount: number }): void }).loadExtraState({
@@ -152,9 +222,10 @@ describe("applyStateAutoDefault (FR-STATE-11)", () => {
     composite.getInput("REGION1")!.connection!.connect(region1Transition.previousConnection!);
     await flushEvents();
 
-    // Backward search crosses from REGION1 back into DO's "A" (a parallel-region quirk
-    // documented as a known limitation, 01_requirements.md 4.12).
-    expect(region1Transition.getFieldValue("FROM")).toBe("A");
+    // REGION1 is its own independent chain; this Transition is first in it, so FROM is
+    // REGION1's own internal start ([*]), never crossing into DO's "A" (the parallel-region
+    // known limitation from 01_requirements.md 4.12 is resolved by this Round).
+    expect(region1Transition.getFieldValue("FROM")).toBe("[*]");
   });
 
   it("leaves a standalone Transition untouched even when unrelated States exist in a different top-level chain", async () => {
@@ -223,6 +294,36 @@ describe("applyStateAutoDefault (FR-STATE-11)", () => {
 
     expect(transition.getFieldValue("FROM")).toBe("[*]");
     expect(transition.getFieldValue("TO")).toBe("B1");
+  });
+
+  it("skips over a preceding Transition inside a Composite State's DO, reaching [*] when nothing else precedes it (02_design.md 43.3)", async () => {
+    const composite = workspace.newBlock("state_composite");
+    composite.setFieldValue("Working", "NAME");
+    await flushEvents();
+
+    // DO body: [firstTransition, secondTransition] -- no State at all inside DO.
+    const firstTransition = workspace.newBlock("state_transition");
+    composite.getInput("DO")!.connection!.connect(firstTransition.previousConnection!);
+    await flushEvents();
+
+    const secondTransition = workspace.newBlock("state_transition");
+    firstTransition.nextConnection!.connect(secondTransition.previousConnection!);
+    await flushEvents();
+
+    // secondTransition's backward scan skips over firstTransition (also a Transition), then
+    // hits the head of DO (firstTransition has no preceding sibling of its own) -- so [*],
+    // not a leak out to whatever precedes the Composite State itself.
+    expect(secondTransition.getFieldValue("FROM")).toBe("[*]");
+  });
+
+  it("treats Fork/Join blocks as nameable neighbors, same as State", async () => {
+    const fork = workspace.newBlock("state_fork");
+    fork.setFieldValue("Fork1", "NAME");
+    const transition = workspace.newBlock("state_transition");
+    fork.nextConnection!.connect(transition.previousConnection!);
+    await flushEvents();
+
+    expect(transition.getFieldValue("FROM")).toBe("Fork1");
   });
 
   it("a Duplicate-simulated Transition (pre-registered ineligible) keeps its copied values on reconnect", async () => {
