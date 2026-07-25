@@ -1,6 +1,7 @@
 import * as Blockly from "blockly/core";
 import { openRenameScopeDialog } from "../../ui/renameScopeDialog";
 import { setFieldValueRefreshingDropdown } from "../common/setDropdownFieldValue";
+import { isSilentCorrection } from "../common/duplicateName";
 
 /**
  * Reentrancy guard for the "all" branch below: applying the batch rename
@@ -42,11 +43,23 @@ function propagateStartPin(workspace: Blockly.Workspace, oldValue: string, newVa
  * others are renamed too. Picking "this" (or dismissing the dialog) leaves
  * oldValue in place on the remaining blocks, so the pin is still valid and
  * is left untouched.
+ *
+ * The `isSilentCorrection` check guards against a real bug (02_design.md
+ * 40.1/40.2): stateImportBuilder.ts's fix (37.7a) doesn't cover this
+ * function, since activity has no `nameOwnerTypes` (Swimlane names are
+ * allowed to collide on purpose) and so never even calls
+ * `guardDuplicateRename`, the only other place that check normally lives.
+ * Without it, importing a diagram whose real Swimlane happens to already be
+ * named exactly like a freshly-created block's hardcoded default (e.g.
+ * "lane") would pop this function's confirmation dialog *during import*,
+ * with no user action having asked for a rename at all -- confirmed live via
+ * a stack trace showing openRenameScopeDialog invoked mid-import.
  */
 export function syncSwimlaneRename(workspace: Blockly.Workspace, event: Blockly.Events.BlockChange): void {
   if (applying || event.name !== "NAME" || !event.blockId) return;
   const block = workspace.getBlockById(event.blockId);
   if (!block || block.type !== "activity_swimlane") return;
+  if (isSilentCorrection(block, event.newValue as string)) return;
 
   const oldValue = event.oldValue as string;
   const newValue = event.newValue as string;

@@ -2,6 +2,7 @@ import * as Blockly from "blockly/core";
 import type { ComponentImportedNode } from "./componentImportParser";
 import { setFieldValueRefreshingDropdown } from "../blocks/common/setDropdownFieldValue";
 import { registerIneligible } from "../blocks/common/autoDefaultTracking";
+import { setNameSilently } from "../blocks/common/duplicateName";
 
 /** A Dependency block whose FROM/TO assignment is deferred until every Component in the tree exists (see buildComponentWorkspace). */
 interface PendingDependency {
@@ -130,7 +131,7 @@ function createBlockForNode(
   switch (node.kind) {
     case "component": {
       const block = workspace.newBlock("component_component");
-      block.setFieldValue(node.name, "NAME");
+      setNameSilently(block, node.name);
       attachChain(workspace, block, "DO", node.body, pending);
       return block;
     }

@@ -3,6 +3,7 @@ import type { SequenceImportedNode } from "./sequenceImportParser";
 import { setNoteDirection } from "../generators/common/noteWrapper";
 import { setFieldValueRefreshingDropdown } from "../blocks/common/setDropdownFieldValue";
 import { registerIneligible } from "../blocks/common/autoDefaultTracking";
+import { setNameSilently } from "../blocks/common/duplicateName";
 
 /**
  * Turns a parsed node tree (sequenceImportParser.ts) into real blocks in
@@ -89,13 +90,13 @@ function createBlockForNode(workspace: Blockly.Workspace, node: SequenceImported
   switch (node.kind) {
     case "participant": {
       const block = workspace.newBlock("sequence_participant");
-      block.setFieldValue(node.name, "NAME");
+      setNameSilently(block, node.name);
       return block;
     }
 
     case "actor": {
       const block = workspace.newBlock("sequence_actor");
-      block.setFieldValue(node.name, "NAME");
+      setNameSilently(block, node.name);
       return block;
     }
 
