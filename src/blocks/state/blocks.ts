@@ -1,7 +1,6 @@
 import * as Blockly from "blockly/core";
 import { STATE_STATEMENT } from "./constants";
 import { defineStateRegionMutator } from "./regionMutator";
-import { setFieldValueRefreshingDropdown } from "../common/setDropdownFieldValue";
 
 /** The pseudostate token for the start/end of a state diagram (or of a composite state's own region). */
 const PSEUDOSTATE = "[*]";
@@ -47,15 +46,18 @@ function declaredStateNames(workspace: Blockly.Workspace): string[] {
  * Dropdown options for State Description's STATE field (FR-STATE-19,
  * 02_design.md 42.2.2). Unlike stateOptions() below, deliberately omits the
  * pseudostate marker and history tokens: PlantUML's "<name> : text" syntax
- * describes a declared state, not a pseudostate. Same "(no X)" fallback
- * shape as sequence/blocks.ts's participantOptions() for the zero-declared
- * case.
+ * describes a declared state, not a pseudostate. Always leads with an
+ * explicit "(unset)" / "" option (round 34): STATE now starts and can end up
+ * unset -- no preceding State/Composite State when the block was connected,
+ * or no states declared at all -- and this lets that state render as
+ * readable text instead of a blank dropdown, while still letting the user
+ * deliberately pick it back to unset.
  */
 function describableStateOptions(this: Blockly.FieldDropdown): Blockly.MenuOption[] {
   const block = this.getSourceBlock();
   const names = block ? declaredStateNames(block.workspace) : [];
-  if (names.length === 0) return [["(no states)", ""]];
-  return names.map((name) => [name, name]);
+  const unset: Blockly.MenuOption = ["(unset)", ""];
+  return [unset, ...names.map((name): Blockly.MenuOption => [name, name])];
 }
 
 /**
@@ -236,12 +238,11 @@ export function defineStateBlocks(): void {
         "Attaches a description line to a state. Add multiple State Description blocks referencing the same state for multiple lines.",
       );
 
-      // Default STATE to the first declared state so a freshly dropped block
-      // renders immediately (same reasoning as sequence_note's TARGET default,
-      // blocks/sequence/blocks.ts). A saved workspace's actual value, if any,
-      // is applied by the deserializer right after this and overrides it.
-      const names = declaredStateNames(this.workspace);
-      if (names.length > 0) setFieldValueRefreshingDropdown(this, "STATE", names[0]);
+      // STATE starts unset ("") -- blocks/state/autoDefault.ts's
+      // applyDescriptionAutoDefault() fills it in from the nearest preceding
+      // State/Composite State once this block makes its first real
+      // connection (round 34). A saved workspace's actual value, if any, is
+      // applied by the deserializer right after this and overrides it.
     },
   };
 }
