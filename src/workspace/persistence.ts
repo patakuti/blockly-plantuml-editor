@@ -30,7 +30,7 @@ export function loadFromLocalStorage(diagramType: string, workspace: Blockly.Wor
 
 export async function exportWorkspaceJson(filename: string, workspace: Blockly.Workspace): Promise<void> {
   const state = Blockly.serialization.workspaces.save(workspace);
-  await saveTextFile(filename, JSON.stringify(state, null, 2), "application/json", [".json"]);
+  await saveFile(filename, JSON.stringify(state, null, 2), "application/json", [".json"]);
 }
 
 export async function importWorkspaceJson(file: File, workspace: Blockly.Workspace): Promise<void> {
@@ -41,18 +41,20 @@ export async function importWorkspaceJson(file: File, workspace: Blockly.Workspa
 }
 
 export async function exportPlantUmlText(filename: string, plantUmlText: string): Promise<void> {
-  await saveTextFile(filename, plantUmlText, "text/plain", [".puml", ".txt"]);
+  await saveFile(filename, plantUmlText, "text/plain", [".puml", ".txt"]);
 }
 
 /**
  * Saves `content` to a file. Uses the File System Access API's native save
  * dialog when available (Chrome/Edge); falls back to the classic
  * anchor-download trick everywhere else, e.g. Firefox (01_requirements.md
- * FR-SAVE-06, 02_design.md 12.6).
+ * FR-SAVE-06, 02_design.md 12.6). `content` accepts a `Blob` too, so callers
+ * outside this module (e.g. preview/previewPanel.ts's SVG/PNG export,
+ * 01_requirements.md FR-SAVE-08) can reuse the same picker/fallback logic.
  */
-async function saveTextFile(
+export async function saveFile(
   filename: string,
-  content: string,
+  content: string | BufferSource | Blob,
   mimeType: string,
   extensions: string[],
 ): Promise<void> {
@@ -71,10 +73,10 @@ async function saveTextFile(
       throw error;
     }
   }
-  downloadTextFile(filename, content, mimeType);
+  downloadFile(filename, content, mimeType);
 }
 
-function downloadTextFile(filename: string, content: string, mimeType: string): void {
+function downloadFile(filename: string, content: string | BufferSource | Blob, mimeType: string): void {
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
