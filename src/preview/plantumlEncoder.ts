@@ -23,3 +23,7 @@ export function setPlantUmlServerBase(base: string): void {
 export function buildPreviewUrl(plantUmlText: string): string {
   return `${getPlantUmlServerBase()}/svg/~h${hexEncode(plantUmlText)}`;
 }
+
+export function buildPngUrl(plantUmlText: string): string {
+  return `${getPlantUmlServerBase()}/png/~h${hexEncode(plantUmlText)}`;
+}

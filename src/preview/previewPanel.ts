@@ -1,7 +1,12 @@
-import { buildPreviewUrl } from "./plantumlEncoder";
-import { exportPlantUmlText } from "../workspace/persistence";
+import { buildPngUrl, buildPreviewUrl } from "./plantumlEncoder";
+import { exportPlantUmlText, saveFile } from "../workspace/persistence";
 
 const DEBOUNCE_MS = 300;
+
+/** Swaps a filename's extension, e.g. "activity-diagram.puml" -> "activity-diagram.svg". */
+function replaceExtension(filename: string, extension: string): string {
+  return filename.replace(/\.[^./]+$/, extension);
+}
 
 /**
  * Shows the rendered SVG plus the generated PlantUML source text. The
@@ -10,9 +15,11 @@ const DEBOUNCE_MS = 300;
  * highlighting the corresponding source text is the documented fallback
  * for FR-SEQ-08 (02_design.md section 7).
  *
- * Export PlantUML and Copy as Markdown live here, next to the source text
- * they act on, rather than in the global toolbar (01_requirements.md
- * FR-SAVE-07, 02_design.md 12.7).
+ * Export PlantUML and Copy as Markdown live next to the source text they
+ * act on; Export SVG and Export PNG live just above the rendered image they
+ * act on instead, rather than in the global toolbar or mixed in with the
+ * text actions (01_requirements.md FR-SAVE-07/FR-SAVE-08, 02_design.md
+ * 12.7/45.4).
  */
 export class PreviewPanel {
   private readonly img: HTMLImageElement;
@@ -22,12 +29,40 @@ export class PreviewPanel {
   private currentFilename = "diagram.puml";
 
   constructor(container: HTMLElement) {
+    const imageActions = document.createElement("div");
+    imageActions.className = "preview-actions";
+
+    const exportSvgButton = document.createElement("button");
+    exportSvgButton.textContent = "Export SVG";
+    exportSvgButton.addEventListener("click", () => {
+      void this.exportImage(
+        buildPreviewUrl(this.currentSource),
+        replaceExtension(this.currentFilename, ".svg"),
+        "image/svg+xml",
+        [".svg"],
+      );
+    });
+
+    const exportPngButton = document.createElement("button");
+    exportPngButton.textContent = "Export PNG";
+    exportPngButton.addEventListener("click", () => {
+      void this.exportImage(
+        buildPngUrl(this.currentSource),
+        replaceExtension(this.currentFilename, ".png"),
+        "image/png",
+        [".png"],
+      );
+    });
+
+    imageActions.append(exportSvgButton, exportPngButton);
+    container.appendChild(imageActions);
+
     this.img = document.createElement("img");
     this.img.alt = "PlantUML preview";
     container.appendChild(this.img);
 
-    const actions = document.createElement("div");
-    actions.className = "preview-actions";
+    const textActions = document.createElement("div");
+    textActions.className = "preview-actions";
 
     const exportButton = document.createElement("button");
     exportButton.textContent = "Export PlantUML";
@@ -41,8 +76,8 @@ export class PreviewPanel {
       void navigator.clipboard.writeText("```plantuml\n" + this.currentSource + "\n```");
     });
 
-    actions.append(exportButton, copyButton);
-    container.appendChild(actions);
+    textActions.append(exportButton, copyButton);
+    container.appendChild(textActions);
 
     this.sourceView = document.createElement("pre");
     this.sourceView.className = "preview-source";
@@ -67,6 +102,29 @@ export class PreviewPanel {
   /** Highlights the first occurrence of `snippet` in the current source, or clears highlighting. */
   highlight(snippet: string | null): void {
     this.renderSource(snippet);
+  }
+
+  /** Fetches the rendered image from the PlantUML server and saves it; alerts instead of saving on failure (01_requirements.md FR-SAVE-08). */
+  private async exportImage(
+    url: string,
+    filename: string,
+    mimeType: string,
+    extensions: string[],
+  ): Promise<void> {
+    let blob: Blob;
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Server responded with ${response.status}`);
+      blob = await response.blob();
+    } catch (error) {
+      window.alert(
+        `Failed to fetch the diagram image from the PlantUML server.\n${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return;
+    }
+    await saveFile(filename, blob, mimeType, extensions);
   }
 
   private renderSource(snippet: string | null): void {
