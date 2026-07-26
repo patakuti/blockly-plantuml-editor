@@ -30,7 +30,8 @@ jobs:
       # Overrides the repo's default public/config.json (which points at the public
       # plantuml.com server) with the self-hosted server whose CORS is scoped to
       # this Pages origin. Only applies to this deployment, not local dev/builds.
-      - run: echo '{"plantUmlServerBase": "https://ik1-430-47195.vs.sakura.ne.jp/plantuml"}' > dist/config.json
+      - run: |
+          echo '{"plantUmlServerBase": "https://ik1-430-47195.vs.sakura.ne.jp/plantuml"}' > dist/config.json
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
