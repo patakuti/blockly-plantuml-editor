@@ -2,6 +2,8 @@
 
 A no-code editor for [PlantUML](https://plantuml.com/) **activity diagrams**, **sequence diagrams**, **state diagrams**, and **component diagrams**, built with [Blockly](https://developers.google.com/blockly). Drag blocks together and see a live PlantUML preview update as you edit — no PlantUML syntax required.
 
+**[Live demo](https://patakuti.github.io/blockly-plantuml-editor/)** — deployed automatically from `main` (see [Deployment](#deployment)).
+
 ## Features
 
 - **Four diagram types**: Activity, Sequence, State, and Component, each with its own dedicated toolbox of blocks mapping onto that diagram type's PlantUML constructs.
@@ -54,6 +56,14 @@ If the file is missing, unreachable, or invalid, the app does **not** fall back 
 | `npm test` | Run the unit test suite (Vitest). |
 
 CI runs `npm run build` and `npm test` on every push and on pull requests targeting `main` (see `.github/workflows/ci.yml`).
+
+## Deployment
+
+Every push to `main` deploys the app to GitHub Pages via `.github/workflows/deploy-pages.yml`:
+
+1. `npm run build` with `VITE_BASE_PATH=/blockly-plantuml-editor/` so assets resolve under the project page's subpath.
+2. `dist/config.json` is then overwritten to point at a self-hosted PlantUML server (its CORS is scoped to this Pages origin) instead of the repo's default public-server config — this override only applies to the deployed demo, not to local builds.
+3. The `dist/` output is published via `actions/deploy-pages`.
 
 ## Project structure
 
