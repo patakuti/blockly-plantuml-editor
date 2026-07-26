@@ -100,6 +100,15 @@ body,
   background: #ffe08a;
 }
 
+.preview-server-unconfigured {
+  margin: 8px;
+  padding: 8px;
+  color: #b00020;
+  border: 1px solid #b00020;
+  background: #fdecea;
+  font-size: 13px;
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;

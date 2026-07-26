@@ -12,7 +12,7 @@ A no-code editor for [PlantUML](https://plantuml.com/) **activity diagrams**, **
 - **Notes on blocks**: attach freeform notes via right-click "Add Comment".
 - **Persistence**: autosaves to `localStorage`; JSON save/load and PlantUML export/copy-as-Markdown.
 - **Editing tools**: Undo, Clear, and drag/duplicate/delete acting on a block plus everything connected below it.
-- **Configurable PlantUML server**: point the preview at any PlantUML-compatible server.
+- **Configurable PlantUML server**: point the preview at any PlantUML-compatible server via `public/config.json` (see [Configuration](#configuration)).
 
 Each diagram type has its own independent Blockly workspace; switching tabs never loses in-progress edits in the other diagram.
 
@@ -26,6 +26,20 @@ npm run dev
 ```
 
 Then open the printed local URL in a browser.
+
+To use a different port, pass `--port` (e.g. `npm run dev -- --port 4000`, or `npm run preview -- --port 4000` for the production build server). This is a one-off override; to change the default persistently, add `server: { port: 4000 }` (and/or `preview: { port: 4000 }`) to `vite.config.ts`.
+
+## Configuration
+
+`public/config.json` sets the PlantUML server the preview and Export SVG/PNG requests are sent to. It's read once at startup (no rebuild needed — edit the file in `dist/` after `npm run build`, or in `public/` before it, and reload the page):
+
+```json
+{
+  "plantUmlServerBase": "https://www.plantuml.com/plantuml"
+}
+```
+
+If the file is missing, unreachable, or invalid, the app does **not** fall back to the public server (to avoid silently sending diagrams somewhere other than the server you intended) — the preview shows a "PlantUML server is not configured" message and Export SVG/PNG alert instead of making a request. A diagnostic message is also logged to the browser console. Saving/loading JSON and exporting PlantUML text are unaffected, since neither depends on the PlantUML server.
 
 ## Scripts
 
@@ -54,7 +68,7 @@ src/
   import/        # PlantUML text -> blocks: per-diagram-type (activity/sequence/state) parser + workspace builder, plus shared line-cursor/preprocessing helpers
   preview/       # PlantUML server URL + hex-encoding, and the preview/source panel
   workspace/     # per-diagram Blockly workspace lifecycle, localStorage/JSON/file persistence
-  ui/            # tab bar, toolbar (Save/Load JSON, Undo, Clear, server setting, Import PlantUML), splitter, import dialog
+  ui/            # tab bar, toolbar (Save/Load JSON, Undo, Clear, Import PlantUML), splitter, import dialog
   types/         # ambient type declarations (File System Access API)
   main.ts        # wires everything together
 tests/
