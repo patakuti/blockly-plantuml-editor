@@ -441,6 +441,18 @@ describe("validateStateWorkspace", () => {
       expect(warnings).toHaveLength(1);
       expect(warnings[0].message).toContain('STATE="[*]"');
     });
+
+    it("warns with a dedicated message when STATE is unset (round 34)", () => {
+      const description = workspace.newBlock("state_description");
+      description.setFieldValue("", "STATE");
+
+      const warnings = validateStateWorkspace(workspace);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0].blockId).toBe(description.id);
+      expect(warnings[0].message).toBe(
+        "Not attached to any state. Connect it directly after a State/Composite State block, or pick one manually.",
+      );
+    });
   });
 
   describe("NAME containing a space or a double quote (FR-STATE-13)", () => {

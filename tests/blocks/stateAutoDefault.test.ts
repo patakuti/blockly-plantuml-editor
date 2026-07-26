@@ -326,6 +326,33 @@ describe("applyStateAutoDefault (FR-STATE-11)", () => {
     expect(transition.getFieldValue("FROM")).toBe("Fork1");
   });
 
+  it("skips over a preceding State Description to reach the State before it (bug fix, round 35)", async () => {
+    const before = state(workspace, "Idle");
+    const description = workspace.newBlock("state_description");
+    before.nextConnection!.connect(description.previousConnection!);
+    await flushEvents();
+
+    const transition = workspace.newBlock("state_transition");
+    description.nextConnection!.connect(transition.previousConnection!);
+    await flushEvents();
+
+    expect(transition.getFieldValue("FROM")).toBe("Idle");
+  });
+
+  it("skips over a following State Description to reach the State after it (bug fix, round 35)", async () => {
+    const after = state(workspace, "Done");
+    const description = workspace.newBlock("state_description");
+    description.nextConnection!.connect(after.previousConnection!);
+    await flushEvents();
+
+    const transition = workspace.newBlock("state_transition");
+    transition.nextConnection!.connect(description.previousConnection!);
+    firePositionOnlyMove(transition);
+    await flushEvents();
+
+    expect(transition.getFieldValue("TO")).toBe("Done");
+  });
+
   it("a Duplicate-simulated Transition (pre-registered ineligible) keeps its copied values on reconnect", async () => {
     const idle = state(workspace, "Idle");
     state(workspace, "Done");
@@ -342,5 +369,137 @@ describe("applyStateAutoDefault (FR-STATE-11)", () => {
 
     expect(dup.getFieldValue("FROM")).toBe("Done");
     expect(dup.getFieldValue("TO")).toBe("Idle");
+  });
+});
+
+describe("applyStateAutoDefault for state_description (FR-STATE-19, round 34)", () => {
+  let workspace: Blockly.Workspace;
+
+  beforeEach(() => {
+    workspace = new Blockly.Workspace();
+    installAutoDefaultWiring(workspace);
+  });
+
+  it("defaults STATE to the immediately preceding State", async () => {
+    const before = state(workspace, "Idle");
+    const description = workspace.newBlock("state_description");
+    before.nextConnection!.connect(description.previousConnection!);
+    await flushEvents();
+
+    expect(description.getFieldValue("STATE")).toBe("Idle");
+  });
+
+  it("defaults STATE to the immediately preceding Composite State's own name", async () => {
+    const composite = workspace.newBlock("state_composite");
+    composite.setFieldValue("Working", "NAME");
+    const description = workspace.newBlock("state_description");
+    composite.nextConnection!.connect(description.previousConnection!);
+    await flushEvents();
+
+    expect(description.getFieldValue("STATE")).toBe("Working");
+  });
+
+  it("skips over a preceding Transition to reach the State before it", async () => {
+    const before = state(workspace, "Idle");
+    const transition = workspace.newBlock("state_transition");
+    before.nextConnection!.connect(transition.previousConnection!);
+    const description = workspace.newBlock("state_description");
+    transition.nextConnection!.connect(description.previousConnection!);
+    await flushEvents();
+
+    expect(description.getFieldValue("STATE")).toBe("Idle");
+  });
+
+  it("skips over a preceding State Description (multi-line description idiom, round 35) to reach the State before it", async () => {
+    const before = state(workspace, "Idle");
+    const firstDescription = workspace.newBlock("state_description");
+    before.nextConnection!.connect(firstDescription.previousConnection!);
+    await flushEvents();
+
+    const secondDescription = workspace.newBlock("state_description");
+    firstDescription.nextConnection!.connect(secondDescription.previousConnection!);
+    await flushEvents();
+
+    expect(secondDescription.getFieldValue("STATE")).toBe("Idle");
+  });
+
+  it("skips over a mix of preceding Transition and State Description blocks to reach the State before them", async () => {
+    const before = state(workspace, "Idle");
+    const transition = workspace.newBlock("state_transition");
+    before.nextConnection!.connect(transition.previousConnection!);
+    const firstDescription = workspace.newBlock("state_description");
+    transition.nextConnection!.connect(firstDescription.previousConnection!);
+    await flushEvents();
+
+    const secondDescription = workspace.newBlock("state_description");
+    firstDescription.nextConnection!.connect(secondDescription.previousConnection!);
+    await flushEvents();
+
+    expect(secondDescription.getFieldValue("STATE")).toBe("Idle");
+  });
+
+  it("leaves STATE unset when nothing precedes it", async () => {
+    const description = workspace.newBlock("state_description");
+    await flushEvents();
+    firePositionOnlyMove(description);
+    await flushEvents();
+
+    expect(description.getFieldValue("STATE")).toBe("");
+  });
+
+  it.each(["state_choice", "state_fork", "state_join"])(
+    "leaves STATE unset when the immediately preceding block is a %s (not treated as State/Composite-like)",
+    async (type) => {
+      const pseudo = workspace.newBlock(type);
+      pseudo.setFieldValue("P1", "NAME");
+      const description = workspace.newBlock("state_description");
+      pseudo.nextConnection!.connect(description.previousConnection!);
+      await flushEvents();
+
+      expect(description.getFieldValue("STATE")).toBe("");
+    },
+  );
+
+  it("does not skip past a preceding Choice/Fork/Join to find an earlier State (stops the search there)", async () => {
+    const before = state(workspace, "Idle");
+    const choice = workspace.newBlock("state_choice");
+    choice.setFieldValue("C1", "NAME");
+    before.nextConnection!.connect(choice.previousConnection!);
+    const description = workspace.newBlock("state_description");
+    choice.nextConnection!.connect(description.previousConnection!);
+    await flushEvents();
+
+    expect(description.getFieldValue("STATE")).toBe("");
+  });
+
+  it("leaves STATE unset when it is the first statement in a Composite State's DO (does not leak to the outer chain)", async () => {
+    const outerBefore = state(workspace, "Idle");
+    const composite = workspace.newBlock("state_composite");
+    composite.setFieldValue("Working", "NAME");
+    outerBefore.nextConnection!.connect(composite.previousConnection!);
+    await flushEvents();
+
+    const description = workspace.newBlock("state_description");
+    composite.getInput("DO")!.connection!.connect(description.previousConnection!);
+    await flushEvents();
+
+    expect(description.getFieldValue("STATE")).toBe("");
+  });
+
+  it("leaves a standalone State Description untouched, then resolves once it actually connects", async () => {
+    const description = workspace.newBlock("state_description");
+    await flushEvents();
+    firePositionOnlyMove(description);
+    await flushEvents();
+
+    expect(description.getFieldValue("STATE")).toBe("");
+    expect(isEligible(description.id)).toBe(true);
+
+    const before = state(workspace, "Idle");
+    before.nextConnection!.connect(description.previousConnection!);
+    await flushEvents();
+
+    expect(description.getFieldValue("STATE")).toBe("Idle");
+    expect(isEligible(description.id)).toBe(false);
   });
 });

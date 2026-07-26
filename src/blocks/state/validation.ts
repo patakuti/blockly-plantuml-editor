@@ -80,9 +80,11 @@ export function validateStateWorkspace(workspace: Blockly.Workspace): StateWarni
       );
       const message =
         missing.length > 0
-          ? `References a state that doesn't exist: ${missing
-              .map((field) => `${field}="${block.getFieldValue(field)}"`)
-              .join(", ")}`
+          ? blockType === "state_description" && block.getFieldValue("STATE") === ""
+            ? "Not attached to any state. Connect it directly after a State/Composite State block, or pick one manually."
+            : `References a state that doesn't exist: ${missing
+                .map((field) => `${field}="${block.getFieldValue(field)}"`)
+                .join(", ")}`
           : null;
       block.setWarningText(message);
       if (message) warnings.push({ blockId: block.id, message });
