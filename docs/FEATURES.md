@@ -65,7 +65,7 @@ Undo and Clear (with a confirmation prompt) in the toolbar; dragging, duplicatin
 
 ### Configurable PlantUML server
 
-The "PlantUML Server" toolbar button lets you point the preview at any PlantUML-compatible server instead of the public default.
+`public/config.json` lets you point the preview and Export SVG/PNG at any PlantUML-compatible server instead of the public default; see the [README's Configuration section](../README.md#configuration).
 
 ## Activity diagrams
 

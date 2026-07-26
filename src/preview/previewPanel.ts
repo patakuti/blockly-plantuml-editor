@@ -21,8 +21,12 @@ function replaceExtension(filename: string, extension: string): string {
  * text actions (01_requirements.md FR-SAVE-07/FR-SAVE-08, 02_design.md
  * 12.7/45.4).
  */
+const SERVER_UNCONFIGURED_MESSAGE =
+  "PlantUML server is not configured. Check config.json (see README) and reload the page.";
+
 export class PreviewPanel {
   private readonly img: HTMLImageElement;
+  private readonly serverUnconfigured: HTMLParagraphElement;
   private readonly sourceView: HTMLPreElement;
   private debounceTimer: ReturnType<typeof setTimeout> | undefined;
   private currentSource = "";
@@ -35,23 +39,23 @@ export class PreviewPanel {
     const exportSvgButton = document.createElement("button");
     exportSvgButton.textContent = "Export SVG";
     exportSvgButton.addEventListener("click", () => {
-      void this.exportImage(
-        buildPreviewUrl(this.currentSource),
-        replaceExtension(this.currentFilename, ".svg"),
-        "image/svg+xml",
-        [".svg"],
-      );
+      const url = buildPreviewUrl(this.currentSource);
+      if (!url) {
+        window.alert(SERVER_UNCONFIGURED_MESSAGE);
+        return;
+      }
+      void this.exportImage(url, replaceExtension(this.currentFilename, ".svg"), "image/svg+xml", [".svg"]);
     });
 
     const exportPngButton = document.createElement("button");
     exportPngButton.textContent = "Export PNG";
     exportPngButton.addEventListener("click", () => {
-      void this.exportImage(
-        buildPngUrl(this.currentSource),
-        replaceExtension(this.currentFilename, ".png"),
-        "image/png",
-        [".png"],
-      );
+      const url = buildPngUrl(this.currentSource);
+      if (!url) {
+        window.alert(SERVER_UNCONFIGURED_MESSAGE);
+        return;
+      }
+      void this.exportImage(url, replaceExtension(this.currentFilename, ".png"), "image/png", [".png"]);
     });
 
     imageActions.append(exportSvgButton, exportPngButton);
@@ -60,6 +64,12 @@ export class PreviewPanel {
     this.img = document.createElement("img");
     this.img.alt = "PlantUML preview";
     container.appendChild(this.img);
+
+    this.serverUnconfigured = document.createElement("p");
+    this.serverUnconfigured.className = "preview-server-unconfigured";
+    this.serverUnconfigured.textContent = SERVER_UNCONFIGURED_MESSAGE;
+    this.serverUnconfigured.style.display = "none";
+    container.appendChild(this.serverUnconfigured);
 
     const textActions = document.createElement("div");
     textActions.className = "preview-actions";
@@ -94,7 +104,10 @@ export class PreviewPanel {
     if (this.debounceTimer !== undefined) clearTimeout(this.debounceTimer);
     this.debounceTimer = setTimeout(() => {
       this.currentSource = plantUmlText;
-      this.img.src = buildPreviewUrl(plantUmlText);
+      const url = buildPreviewUrl(plantUmlText);
+      this.img.style.display = url ? "" : "none";
+      this.serverUnconfigured.style.display = url ? "none" : "";
+      if (url) this.img.src = url;
       this.renderSource(null);
     }, DEBOUNCE_MS);
   }

@@ -31,6 +31,7 @@ import { guardDuplicateRename, resolveDuplicateNamesOnCreate } from "./blocks/co
 import { trackBlockCreate, isEligible, forgetBlocks } from "./blocks/common/autoDefaultTracking";
 import { getBlockOwnCode } from "./generators/common/blockSnippet";
 import { PreviewPanel } from "./preview/previewPanel";
+import { loadPlantUmlServerConfig } from "./preview/plantumlEncoder";
 import { saveToLocalStorage } from "./workspace/persistence";
 import {
   createDiagramInstances,
@@ -221,6 +222,10 @@ for (const instance of instances) {
   });
 }
 
+// The first createTabs() selection below synchronously triggers updatePreview(),
+// so the PlantUML server base must be resolved before it runs (FR-COM-11, 02_design.md 46.3).
+await loadPlantUmlServerConfig();
+
 createTabs(
   tabsDiv,
   instances.map((instance) => ({ key: instance.key, label: instance.label })),
@@ -237,7 +242,6 @@ installSplitter(layout, workspaceHost, previewDiv, () => {
 
 createToolbar(toolbarDiv, {
   getActive: (): DiagramInstance => instanceByKey.get(activeKey)!,
-  onPlantUmlServerChanged: updatePreview,
 });
 
 if (import.meta.env.DEV) {
