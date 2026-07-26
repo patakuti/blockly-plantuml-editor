@@ -53,6 +53,8 @@ If the file is missing, unreachable, or invalid, the app does **not** fall back 
 | `npm run preview` | Serve the production build locally. |
 | `npm test` | Run the unit test suite (Vitest). |
 
+CI runs `npm run build` and `npm test` on every push and on pull requests targeting `main` (see `.github/workflows/ci.yml`).
+
 ## Project structure
 
 ```

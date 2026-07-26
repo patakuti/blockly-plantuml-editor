@@ -3,6 +3,12 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
+  "license": "MIT",
+  "author": "patakuti",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/patakuti/blockly-plantuml-editor.git"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
