@@ -39,7 +39,10 @@ To use a different port, pass `--port` (e.g. `npm run dev -- --port 4000`, or `n
 }
 ```
 
-If the file is missing, unreachable, or invalid, the app does **not** fall back to the public server (to avoid silently sending diagrams somewhere other than the server you intended) — the preview shows a "PlantUML server is not configured" message and Export SVG/PNG alert instead of making a request. A diagnostic message is also logged to the browser console. Saving/loading JSON and exporting PlantUML text are unaffected, since neither depends on the PlantUML server.
+> [!WARNING]
+> By default this points at the public `plantuml.com` server, so diagram content is sent there to render previews and exports. If your diagrams are sensitive, point it at a self-hosted server instead.
+
+If the file is missing, unreachable, or invalid, the app does **not** fall back to the public server — the preview shows a "PlantUML server is not configured" message and Export SVG/PNG alert instead of making a request, with a diagnostic also logged to the browser console. Saving/loading JSON and exporting PlantUML text are unaffected, since neither depends on the PlantUML server.
 
 ## Scripts
 
