@@ -4,6 +4,8 @@ A no-code editor for [PlantUML](https://plantuml.com/) **activity diagrams**, **
 
 **[Live demo](https://patakuti.github.io/blockly-plantuml-editor/)** — deployed automatically from `main` (see [Deployment](#deployment)).
 
+![Demo](docs/images/demo.gif)
+
 ## Features
 
 - **Four diagram types**: Activity, Sequence, State, and Component, each with its own dedicated toolbox of blocks mapping onto that diagram type's PlantUML constructs.
@@ -80,7 +82,7 @@ src/
     activityGenerator.ts
     sequenceGenerator.ts
     componentGenerator.ts
-  import/        # PlantUML text -> blocks: per-diagram-type (activity/sequence/state) parser + workspace builder, plus shared line-cursor/preprocessing helpers
+  import/        # PlantUML text -> blocks: per-diagram-type (activity/sequence/state/component) parser + workspace builder, plus shared line-cursor/preprocessing helpers
   preview/       # PlantUML server URL + hex-encoding, and the preview/source panel
   workspace/     # per-diagram Blockly workspace lifecycle, localStorage/JSON/file persistence
   ui/            # tab bar, toolbar (Save/Load JSON, Undo, Clear, Import PlantUML), splitter, import dialog
@@ -88,7 +90,7 @@ src/
   main.ts        # wires everything together
 tests/
   generators/    # unit tests for the code generators, run against headless Blockly workspaces
-  import/        # unit tests for all three diagram types' PlantUML import parsers and their parse-build-regenerate round trips
+  import/        # unit tests for all four diagram types' PlantUML import parsers and their parse-build-regenerate round trips
   blocks/        # unit tests for FROM/TO/TARGET auto-fill (eligibility tracking, nested-chain enumeration, sequence/state-specific inference)
 ```
 
